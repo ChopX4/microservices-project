@@ -14,6 +14,7 @@ service InventoryService {
     rpc ListParts(ListPartsRequest) returns (ListPartsResponse);
 }
 
+// список деталей с возможностью фильтрации
 message PartsFilter {
     repeated string uuids = 1;
     repeated string names = 2;
@@ -22,6 +23,7 @@ message PartsFilter {
     repeated string tags = 5;
 }
 
+// Тип значения, один из:
 message Value {
     oneof kind {
       string string_value = 1;
@@ -31,12 +33,14 @@ message Value {
     }
 }
 
+// название, страна, сайт
 message Manufacturer {
     string name = 1;
     string country = 2;
     string website = 3;
 }
 
+// длина, ширина, высота, вес
 message Dimensions {
     double length = 1;
     double width = 2;
@@ -44,14 +48,16 @@ message Dimensions {
     double weight = 4;
 }
 
+// перечисление
 enum Category {
-    UNKNOWN = 0; // Неизвестная категория
-    ENGINE = 1; // Двигатель
-    FUEL = 2; // Топливо
-    PORTHOLE = 3; // Иллюминатор
-    WING = 4; // Крыло
+    CATEGORY_UNKNOWN_UNSPECIFIED = 0; // Неизвестная категория
+    CATEGORY_ENGINE = 1; // Двигатель
+    CATEGORY_FUEL = 2; // Топливо
+    CATEGORY_PORTHOLE = 3; // Иллюминатор
+    CATEGORY_WING = 4; // Крыло
 }
 
+// структура Part
 message Part {
     // Уникальный идентификатор детали
     string uuid = 1;
@@ -79,20 +85,24 @@ message Part {
     google.protobuf.Timestamp updated_at = 12;
 }
 
+// ...
 message GetPartRequest {
     // идентификатор детали
     string uuid = 1;
 }
 
+// ...
 message GetPartResponse {
     // информация о детали
     Part part = 1;
 }
 
+// ...
 message ListPartsRequest {
     PartsFilter filter = 1;
 }
 
+// ...
 message ListPartsResponse {
     repeated Part parts = 1;
 }

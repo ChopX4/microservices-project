@@ -1,0 +1,13 @@
+type: object
+required::
+  - code 
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+    exmaple: 204
+  message:
+    type: string
+    description: Описание ошибки
+    exmaple: "No Content"

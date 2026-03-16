@@ -1,0 +1,9 @@
+type: string
+description: Метод оплаты
+enum:
+  - UNKNOWN
+  - CARD
+  - SPB 
+  - CREDIT_CARD 
+  - INVESTOR_MONEY
+example: CARD
