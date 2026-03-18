@@ -1,4 +1,4 @@
-package payment
+package main
 
 import (
 	"context"
@@ -7,125 +7,27 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
-	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
+	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
-const grpcPort = 50051
+const grpcPort = 50052
 
-type InventoryService struct {
-	inventory_v1.UnimplementedInventoryServiceServer
-
-	mu    sync.RWMutex
-	parts map[string]*inventory_v1.Part
+type paymentService struct {
+	payment_v1.UnimplementedPaymentServiceServer
 }
 
-func (s *InventoryService) GetPart(_ context.Context, req *inventory_v1.GetPartRequest) (*inventory_v1.GetPartResponse, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *paymentService) PayOrder(_ context.Context, req *payment_v1.PayOrderRequest) (*payment_v1.PayOrderResponse, error) {
+	transaction_uuid := uuid.New()
 
-	part, ok := s.parts[req.GetUuid()]
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, "part with UUID %s not found", req.GetUuid())
-	}
+	log.Printf("Оплата прошла успешно, transaction_uuid: %s", transaction_uuid.String())
 
-	return &inventory_v1.GetPartResponse{
-		Part: part,
-	}, nil
-}
-
-func (s *InventoryService) ListParts(_ context.Context, req *inventory_v1.ListPartsRequest) (*inventory_v1.ListPartsResponse, error) {
-	filter := req.GetFilter()
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	storage := make([]*inventory_v1.Part, 0)
-
-	for _, part := range s.parts {
-		if filter == nil {
-			storage = append(storage, part)
-			continue
-		}
-
-		if len(filter.GetUuids()) > 0 {
-			found := false
-			for _, v := range filter.GetUuids() {
-				if part.GetUuid() == v {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		if len(filter.GetNames()) > 0 {
-			found := false
-			for _, v := range filter.GetNames() {
-				if part.GetName() == v {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		if len(filter.GetCategories()) > 0 {
-			found := false
-			for _, v := range filter.GetCategories() {
-				if part.GetCategory() == v {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		if len(filter.GetManufacturerCountries()) > 0 {
-			found := false
-			for _, v := range filter.GetManufacturerCountries() {
-				if part.Manufacturer.GetCountry() == v {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		if len(filter.GetTags()) > 0 {
-			found := false
-			for _, v := range filter.GetTags() {
-				for _, tag := range part.GetTags() {
-					if tag == v {
-						found = true
-						break
-					}
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		storage = append(storage, part)
-	}
-
-	return &inventory_v1.ListPartsResponse{
-		Parts: storage,
+	return &payment_v1.PayOrderResponse{
+		TransactionUuid: transaction_uuid.String(),
 	}, nil
 }
 
@@ -137,23 +39,21 @@ func main() {
 	}
 	defer func() {
 		if cerr := lis.Close(); cerr != nil {
-			log.Printf("failed to close: %v\n", cerr)
+			log.Printf("failed to close listener: %v\n", cerr)
 		}
 	}()
 
 	s := grpc.NewServer()
-	service := &InventoryService{
-		parts: make(map[string]*inventory_v1.Part),
-	}
 
-	inventory_v1.RegisterInventoryServiceServer(s, service)
+	service := &paymentService{}
+
+	payment_v1.RegisterPaymentServiceServer(s, service)
 
 	reflection.Register(s)
 
 	go func() {
 		log.Printf("🚀 gRPC server listening on %d\n", grpcPort)
-		err := s.Serve(lis)
-		if err != nil {
+		if err := s.Serve(lis); err != nil {
 			log.Printf("failed to serve: %v\n", err)
 			return
 		}

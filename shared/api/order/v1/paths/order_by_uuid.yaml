@@ -23,14 +23,17 @@ get:
         description: Bad request - validation error
         content:
           application/json:
-            $ref: ../components/errors/bad_request_error.yaml
+            schema:
+              $ref: ../components/errors/bad_request_error.yaml
     '500':
       description: Internal server error
       content:
         application/json:
-          $ref: ../components/errors/internal_server_error.yaml
+          schema:
+            $ref: ../components/errors/internal_server_error.yaml
     default:
       description: Unexpected error
       content:
         application/json:
-          $ref: ../components/errors/generic_error.yaml
+          schema:
+            $ref: ../components/errors/generic_error.yaml

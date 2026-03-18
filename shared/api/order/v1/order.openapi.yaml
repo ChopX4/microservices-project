@@ -5,7 +5,7 @@ info:
   description: API для управления заказами
 x-ogen:
   target: ./shared/pkg/openapi/order/v1
-  package: oprder_v1
+  package: order_v1
   clean: true
 
 tags:
