@@ -52,7 +52,7 @@ func (s *OrderStorage) CreateOrder(order *order_v1.OrderByUUID) error {
 	return nil
 }
 
-func (s *OrderStorage) PayOrder(orderUUID string, transactionUUID string, paymentMethod order_v1.PaymentMethod) (uuid.UUID, error) {
+func (s *OrderStorage) PayOrder(orderUUID, transactionUUID string, paymentMethod order_v1.PaymentMethod) (uuid.UUID, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -127,7 +127,6 @@ func (h *OrderHandler) NewError(_ context.Context, err error) *order_v1.GenericE
 
 func (h *OrderHandler) CancelOrder(_ context.Context, params order_v1.CancelOrderParams) (order_v1.CancelOrderRes, error) {
 	err := h.storage.CancelOrder(params.OrderUUID.String())
-
 	if err != nil {
 		switch err.Error() {
 		case "not_found":
