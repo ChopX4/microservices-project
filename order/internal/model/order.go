@@ -6,6 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrderResponse struct {
+	OrderUUID  uuid.UUID
+	TotalPrice float32
+}
+
+type OrderRequest struct {
+	UserUUID  uuid.UUID
+	PartUUIDs []uuid.UUID
+}
+
 type OrderByUUID struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
@@ -25,6 +35,12 @@ const (
 	PaymentMethodCreditCard    PaymentMethod = "CREDIT_CARD"
 	PaymentMethodInvestorMoney PaymentMethod = "INVESTOR_MONEY"
 )
+
+type PayOrderRequest struct {
+	OrderUuid     string
+	UserUuid      string
+	PaymentMethod PaymentMethod
+}
 
 type OrderStatus string
 
