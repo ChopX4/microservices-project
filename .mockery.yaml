@@ -1,0 +1,37 @@
+with-expecter: true
+boilerplate-file: ".mockery_boilerplate_text.txt"
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceNameSnake}}.go"
+outpkg: "mocks"
+mockname: "{{.InterfaceName}}"
+resolve-type-alias: False
+issue-845-fix: True
+
+packages:
+  github.com/ChopX4/raketka/inventory/internal/api:
+    config:
+      include-regex: ".*Api"
+  github.com/ChopX4/raketka/inventory/internal/service:
+    config:
+      include-regex: ".*Service"
+  github.com/ChopX4/raketka/inventory/internal/repository:
+    config:
+      include-regex: ".*Repository"
+  github.com/ChopX4/raketka/order/internal/api:
+    config:
+      include-regex: ".*Api"
+  github.com/ChopX4/raketka/order/internal/service:
+    config:
+      include-regex: ".*Service"
+  github.com/ChopX4/raketka/order/internal/repository:
+    config:
+      include-regex: ".*Repository"
+  github.com/ChopX4/raketka/payment/internal/api:
+    config:
+      include-regex: ".*Api"
+  github.com/ChopX4/raketka/payment/internal/service:
+    config:
+      include-regex: ".*Service"
+  github.com/ChopX4/raketka/order/internal/clients/grpc:
+    config:
+      include-regex: ".*Client"

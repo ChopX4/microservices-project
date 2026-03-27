@@ -14,7 +14,6 @@ func (s *service) Create(ctx context.Context, order model.OrderRequest) (model.O
 	}
 
 	parts, err := s.inventoryClient.ListParts(ctx, model.PartsFilter{UUIDS: uuids})
-
 	if err != nil {
 		return model.OrderResponse{}, err
 	}

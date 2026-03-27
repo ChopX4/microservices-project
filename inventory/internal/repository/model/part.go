@@ -52,10 +52,12 @@ type Value interface {
 	isKind()
 }
 
-type StringValue struct{ V string }
-type Int64Value struct{ V int64 }
-type Float64Value struct{ V float64 }
-type BoolValue struct{ V bool }
+type (
+	StringValue  struct{ V string }
+	Int64Value   struct{ V int64 }
+	Float64Value struct{ V float64 }
+	BoolValue    struct{ V bool }
+)
 
 func (StringValue) isKind()  {}
 func (Int64Value) isKind()   {}
