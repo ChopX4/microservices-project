@@ -3,8 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/google/uuid"
+
+	"github.com/ChopX4/raketka/order/internal/model"
 )
 
 type OrderService interface {

@@ -8,11 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
 	paymentApi "github.com/ChopX4/raketka/payment/internal/api/payment/v1"
 	paymentService "github.com/ChopX4/raketka/payment/internal/service/method"
 	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 const grpcPort = 50052

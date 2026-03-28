@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
 	repoModel "github.com/ChopX4/raketka/order/internal/repository/model"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (r *repository) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {

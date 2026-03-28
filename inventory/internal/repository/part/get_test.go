@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGet(t *testing.T) {

@@ -11,6 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	orderApi "github.com/ChopX4/raketka/order/internal/api/order/v1"
 	orderInventoryClient "github.com/ChopX4/raketka/order/internal/clients/grpc/inventory"
 	orderPaymentClient "github.com/ChopX4/raketka/order/internal/clients/grpc/payment"
@@ -20,12 +27,6 @@ import (
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -76,16 +77,24 @@ func main() {
 	ctx := context.Background()
 
 	db, err := sql.Open("pgx", dbURI)
+	if err != nil {
+		log.Printf("failed to connect to database for migrations: %v\n", err)
+		return
+	}
 
 	migratorRunner := migrator.NewMigrator(db, orderMigrationsDir)
 	err = migratorRunner.Up()
 	if err != nil {
-		db.Close()
+		if cerr := db.Close(); cerr != nil {
+			log.Printf("Ошибка закрытия подключения к базе данных: %v\n", err)
+		}
 
 		log.Printf("Ошибка миграции базы данных: %v\n", err)
 		return
 	}
-	db.Close()
+	if cerr := db.Close(); cerr != nil {
+		log.Printf("Ошибка закрытия подключения к базе данных: %v\n", err)
+	}
 
 	conn, err := pgxpool.New(ctx, dbURI)
 	if err != nil {

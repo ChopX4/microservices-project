@@ -1,13 +1,14 @@
 package part
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestList(t *testing.T) {

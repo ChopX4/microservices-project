@@ -4,8 +4,9 @@ import (
 	"context"
 	"log"
 
-	"github.com/ChopX4/raketka/payment/internal/model"
 	"github.com/google/uuid"
+
+	"github.com/ChopX4/raketka/payment/internal/model"
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (string, error) {

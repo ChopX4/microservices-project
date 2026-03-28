@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ChopX4/raketka/order/internal/clients/grpc/mocks"
-	"github.com/ChopX4/raketka/order/internal/model"
-	repoMocks "github.com/ChopX4/raketka/order/internal/repository/mocks"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/ChopX4/raketka/order/internal/clients/grpc/mocks"
+	"github.com/ChopX4/raketka/order/internal/model"
+	repoMocks "github.com/ChopX4/raketka/order/internal/repository/mocks"
 )
 
 func TestCreate(t *testing.T) {

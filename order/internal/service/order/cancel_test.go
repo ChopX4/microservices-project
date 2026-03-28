@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ChopX4/raketka/order/internal/model"
-	"github.com/ChopX4/raketka/order/internal/repository/mocks"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ChopX4/raketka/order/internal/model"
+	"github.com/ChopX4/raketka/order/internal/repository/mocks"
 )
 
 func TestCancel(t *testing.T) {

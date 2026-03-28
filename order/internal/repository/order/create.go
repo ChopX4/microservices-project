@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error {
@@ -36,7 +37,6 @@ func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error 
 		repoOrder.PaymentMethod,
 		repoOrder.Status,
 	)
-
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {

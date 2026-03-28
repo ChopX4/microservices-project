@@ -3,8 +3,9 @@ package order
 import (
 	"context"
 
-	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/google/uuid"
+
+	"github.com/ChopX4/raketka/order/internal/model"
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error) {
