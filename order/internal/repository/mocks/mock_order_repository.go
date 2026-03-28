@@ -71,9 +71,9 @@ func (_c *OrderRepository_Create_Call) RunAndReturn(run func(context.Context, mo
 	return _c
 }
 
-// Get provides a mock function with given fields: orderUUID
-func (_m *OrderRepository) Get(orderUUID string) (model.OrderByUUID, error) {
-	ret := _m.Called(orderUUID)
+// Get provides a mock function with given fields: ctx, orderUUID
+func (_m *OrderRepository) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {
+	ret := _m.Called(ctx, orderUUID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
@@ -81,17 +81,17 @@ func (_m *OrderRepository) Get(orderUUID string) (model.OrderByUUID, error) {
 
 	var r0 model.OrderByUUID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (model.OrderByUUID, error)); ok {
-		return rf(orderUUID)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (model.OrderByUUID, error)); ok {
+		return rf(ctx, orderUUID)
 	}
-	if rf, ok := ret.Get(0).(func(string) model.OrderByUUID); ok {
-		r0 = rf(orderUUID)
+	if rf, ok := ret.Get(0).(func(context.Context, string) model.OrderByUUID); ok {
+		r0 = rf(ctx, orderUUID)
 	} else {
 		r0 = ret.Get(0).(model.OrderByUUID)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(orderUUID)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, orderUUID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,14 +105,15 @@ type OrderRepository_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
+//   - ctx context.Context
 //   - orderUUID string
-func (_e *OrderRepository_Expecter) Get(orderUUID interface{}) *OrderRepository_Get_Call {
-	return &OrderRepository_Get_Call{Call: _e.mock.On("Get", orderUUID)}
+func (_e *OrderRepository_Expecter) Get(ctx interface{}, orderUUID interface{}) *OrderRepository_Get_Call {
+	return &OrderRepository_Get_Call{Call: _e.mock.On("Get", ctx, orderUUID)}
 }
 
-func (_c *OrderRepository_Get_Call) Run(run func(orderUUID string)) *OrderRepository_Get_Call {
+func (_c *OrderRepository_Get_Call) Run(run func(ctx context.Context, orderUUID string)) *OrderRepository_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -122,7 +123,7 @@ func (_c *OrderRepository_Get_Call) Return(_a0 model.OrderByUUID, _a1 error) *Or
 	return _c
 }
 
-func (_c *OrderRepository_Get_Call) RunAndReturn(run func(string) (model.OrderByUUID, error)) *OrderRepository_Get_Call {
+func (_c *OrderRepository_Get_Call) RunAndReturn(run func(context.Context, string) (model.OrderByUUID, error)) *OrderRepository_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }

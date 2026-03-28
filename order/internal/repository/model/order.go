@@ -3,13 +3,13 @@ package model
 import "github.com/google/uuid"
 
 type OrderByUUID struct {
-	OrderUUID       uuid.UUID
-	UserUUID        uuid.UUID
-	PartUuids       []uuid.UUID
-	TotalPrice      float32
-	TransactionUUID uuid.UUID
-	PaymentMethod   PaymentMethod
-	Status          OrderStatus
+	OrderUUID       uuid.UUID     `db:"order_uuid"`
+	UserUUID        uuid.UUID     `db:"user_uuid"`
+	PartUuids       []uuid.UUID   `db:"part_uuids"`
+	TotalPrice      float32       `db:"total_price"`
+	TransactionUUID uuid.UUID     `db:"transaction_uuid"`
+	PaymentMethod   PaymentMethod `db:"payment_method"`
+	Status          OrderStatus   `db:"status"`
 }
 
 type PaymentMethod string

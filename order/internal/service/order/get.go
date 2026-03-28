@@ -7,7 +7,7 @@ import (
 )
 
 func (s *service) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {
-	order, err := s.orderRepository.Get(orderUUID)
+	order, err := s.orderRepository.Get(ctx, orderUUID)
 	if err != nil {
 		return model.OrderByUUID{}, err
 	}

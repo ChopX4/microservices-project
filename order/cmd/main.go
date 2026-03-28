@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	orderApi "github.com/ChopX4/raketka/order/internal/api/order/v1"
 	orderInventoryClient "github.com/ChopX4/raketka/order/internal/clients/grpc/inventory"
 	orderPaymentClient "github.com/ChopX4/raketka/order/internal/clients/grpc/payment"
+	migrator "github.com/ChopX4/raketka/order/internal/migrator"
 	repo "github.com/ChopX4/raketka/order/internal/repository/order"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
@@ -20,14 +22,18 @@ import (
 	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	httpPort         = "8080"
-	paymentAddress   = "localhost:50052"
-	inventoryAddress = "localhost:50051"
+	httpPort           = "8080"
+	paymentAddress     = "localhost:50052"
+	inventoryAddress   = "localhost:50051"
+	dbURI              = "postgres://order_service-user:order_service-password@localhost:5432/order-service?sslmode=disable"
+	orderMigrationsDir = "./order/internal/migrations"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
@@ -39,12 +45,12 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		log.Fatalf("failed to connect: %v\n", err)
+		log.Printf("failed to connect: %v\n", err)
 		return
 	}
 	defer func() {
 		if cerr := paymentCon.Close(); cerr != nil {
-			log.Fatalf("failed to close connect: %v", cerr)
+			log.Printf("failed to close connect: %v", cerr)
 		}
 	}()
 
@@ -53,12 +59,12 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		log.Fatalf("failed to connect: %v\n", err)
+		log.Printf("failed to connect: %v\n", err)
 		return
 	}
 	defer func() {
 		if cerr := inventoryCon.Close(); cerr != nil {
-			log.Fatalf("failed to close connect: %v", cerr)
+			log.Printf("failed to close connect: %v", cerr)
 		}
 	}()
 
@@ -67,13 +73,39 @@ func main() {
 	payServiceClient := orderPaymentClient.NewPaymentClient(paymentClient)
 	invServiceClient := orderInventoryClient.NewInventoryClient(inventoryClient)
 
-	repo := repo.NewRepository()
+	ctx := context.Background()
+
+	db, err := sql.Open("pgx", dbURI)
+
+	migratorRunner := migrator.NewMigrator(db, orderMigrationsDir)
+	err = migratorRunner.Up()
+	if err != nil {
+		db.Close()
+
+		log.Printf("Ошибка миграции базы данных: %v\n", err)
+		return
+	}
+	db.Close()
+
+	conn, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		log.Printf("failed to connect to database: %v\n", err)
+		return
+	}
+	defer conn.Close()
+
+	if err := conn.Ping(ctx); err != nil {
+		log.Printf("База данных недоступна: %v\n", err)
+		return
+	}
+
+	repo := repo.NewRepository(conn)
 	s := orderService.NewService(repo, invServiceClient, payServiceClient)
 	api := orderApi.NewApi(s)
 
 	orderServer, err := order_v1.NewServer(api)
 	if err != nil {
-		log.Fatalf("ошибка создания сервера OpenAPI: %v", err)
+		log.Printf("ошибка создания сервера OpenAPI: %v", err)
 	}
 
 	r := chi.NewRouter()

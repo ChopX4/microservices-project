@@ -8,7 +8,7 @@ import (
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error) {
-	order, err := s.orderRepository.Get(req.OrderUuid)
+	order, err := s.orderRepository.Get(ctx, req.OrderUuid)
 	if err != nil {
 		return uuid.Nil, err
 	}

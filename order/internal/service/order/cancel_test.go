@@ -59,7 +59,7 @@ func TestCancel(t *testing.T) {
 			name:      "Успешная отмена",
 			orderUuid: orderID.String(),
 			prepareMock: func(or *mocks.OrderRepository, uuid string) {
-				or.On("Get", uuid).Return(testOrder, nil)
+				or.On("Get", context.Background(), uuid).Return(testOrder, nil)
 				or.On("Update", context.Background(), testOrderCanceled).Return(nil)
 			},
 			expError: nil,
@@ -68,7 +68,7 @@ func TestCancel(t *testing.T) {
 			name:      "Заказ не найден",
 			orderUuid: "testid",
 			prepareMock: func(or *mocks.OrderRepository, uuid string) {
-				or.On("Get", uuid).Return(model.OrderByUUID{}, model.ErrNotFound)
+				or.On("Get", context.Background(), uuid).Return(model.OrderByUUID{}, model.ErrNotFound)
 			},
 			expError: model.ErrNotFound,
 		},
@@ -76,7 +76,7 @@ func TestCancel(t *testing.T) {
 			name:      "Ошибка конфликт",
 			orderUuid: orderID.String(),
 			prepareMock: func(or *mocks.OrderRepository, uuid string) {
-				or.On("Get", uuid).Return(testOrderConflict, nil)
+				or.On("Get", context.Background(), uuid).Return(testOrderConflict, nil)
 			},
 			expError: model.ErrConflict,
 		},
@@ -84,7 +84,7 @@ func TestCancel(t *testing.T) {
 			name:      "Ошибка при апдейте",
 			orderUuid: orderID.String(),
 			prepareMock: func(or *mocks.OrderRepository, uuid string) {
-				or.On("Get", uuid).Return(testOrder, nil)
+				or.On("Get", context.Background(), uuid).Return(testOrder, nil)
 				or.On("Update", context.Background(), testOrderCanceled).Return(model.ErrNotFound)
 			},
 			expError: model.ErrNotFound,

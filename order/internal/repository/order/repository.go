@@ -1,18 +1,15 @@
 package order
 
 import (
-	"sync"
-
-	"github.com/ChopX4/raketka/order/internal/repository/model"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type repository struct {
-	mu     sync.RWMutex
-	orders map[string]model.OrderByUUID
+	db *pgxpool.Pool
 }
 
-func NewRepository() *repository {
+func NewRepository(db *pgxpool.Pool) *repository {
 	return &repository{
-		orders: make(map[string]model.OrderByUUID),
+		db: db,
 	}
 }
