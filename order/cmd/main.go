@@ -33,8 +33,8 @@ const (
 	httpPort           = "8080"
 	paymentAddress     = "localhost:50052"
 	inventoryAddress   = "localhost:50051"
-	dbURI              = "postgres://order_service-user:order_service-password@localhost:5432/order-service?sslmode=disable"
-	orderMigrationsDir = "./order/internal/migrations"
+	dbURI              = "postgres://order-service-user:order-service-password@localhost:5432/order-service?sslmode=disable"
+	orderMigrationsDir = "./order/migrations"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second

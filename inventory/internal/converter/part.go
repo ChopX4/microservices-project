@@ -75,7 +75,7 @@ func ManufacturerToProto(manufacturer model.Manufacturer) *inventory_v1.Manufact
 	}
 }
 
-func MetadataToProto(meta map[string]model.Value) map[string]*inventory_v1.Value {
+func MetadataToProto(meta map[string]any) map[string]*inventory_v1.Value {
 	if meta == nil {
 		return nil
 	}
@@ -86,18 +86,21 @@ func MetadataToProto(meta map[string]model.Value) map[string]*inventory_v1.Value
 		protoVal := &inventory_v1.Value{}
 
 		switch v := val.(type) {
-		case model.StringValue:
+		case string:
 			// В твоем коде: структура Value_StringValue, поле StringValue
-			protoVal.Kind = &inventory_v1.Value_StringValue{StringValue: v.V}
-		case model.Int64Value:
+			protoVal.Kind = &inventory_v1.Value_StringValue{StringValue: v}
+		case int64:
 			// В твоем коде: структура Value_Int64Value, поле Int64Value
-			protoVal.Kind = &inventory_v1.Value_Int64Value{Int64Value: v.V}
-		case model.Float64Value:
+			protoVal.Kind = &inventory_v1.Value_Int64Value{Int64Value: v}
+		case int:
+			// В твоем коде: структура Value_Int64Value, поле Int64Value
+			protoVal.Kind = &inventory_v1.Value_Int64Value{Int64Value: int64(v)}
+		case float64:
 			// В твоем коде: структура Value_DoubleValue (у тебя в прото Double, а не Float64)
-			protoVal.Kind = &inventory_v1.Value_DoubleValue{DoubleValue: v.V}
-		case model.BoolValue:
+			protoVal.Kind = &inventory_v1.Value_DoubleValue{DoubleValue: v}
+		case bool:
 			// В твоем коде: структура Value_BoolValue, поле BoolValue
-			protoVal.Kind = &inventory_v1.Value_BoolValue{BoolValue: v.V}
+			protoVal.Kind = &inventory_v1.Value_BoolValue{BoolValue: v}
 		}
 
 		result[key] = protoVal

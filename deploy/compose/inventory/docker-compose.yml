@@ -5,12 +5,12 @@ services:
     container_name: mongo-inventory
 
     environment:
-      MONGO-INITDB_DATABASE: inventory-service
-      MONGO_INITDB_USERNAME: inventory-service-user
-      MONGO_INITDB-PASSWORD: inventory-service-password
+      MONGO_INITDB_DATABASE: inventory-service
+      MONGO_INITDB_ROOT_USERNAME: inventory-service-user
+      MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
 
     volumes:
-      -mongo_inventory_data:/data/db
+      - mongo_inventory_data:/data/db
 
     ports:
       - "27017:27017"
@@ -34,4 +34,4 @@ volumes:
 
 networks:
   microservices-net:
-  external: true
+    external: true

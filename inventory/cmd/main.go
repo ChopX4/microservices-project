@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -8,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -17,7 +20,10 @@ import (
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 )
 
-const grpcPort = 50051
+const (
+	grpcPort = 50051
+	mongoURI = "mongodb://inventory-service-user:inventory-service-password@localhost:27017/database?authSource=admin"
+)
 
 func main() {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
@@ -33,7 +39,33 @@ func main() {
 
 	s := grpc.NewServer()
 
-	repo := inventoryRepo.NewRepository()
+	ctx := context.Background()
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		log.Printf("failed to connect to database: %v\n", err)
+		return
+	}
+	defer func() {
+		cerr := client.Disconnect(ctx)
+		if cerr != nil {
+			log.Printf("failed to disconnect: %v\n", cerr)
+		}
+	}()
+
+	if err := client.Ping(ctx, nil); err != nil {
+		log.Printf("failed to ping database: %v\n", err)
+		return
+	}
+
+	db := client.Database("inventory-service")
+
+	repo, err := inventoryRepo.NewRepository(db)
+	if err != nil {
+		log.Printf("failed to create repo: %v\n", err)
+		return
+	}
+
 	service := inventoryService.NewService(repo)
 	api := inventoryApi.NewApi(service)
 
