@@ -1,0 +1,37 @@
+services:
+  mongo-inventory:
+    image: mongo:8.0.0
+
+    container_name: mongo-inventory
+
+    environment:
+      MONGO-INITDB_DATABASE: inventory-service
+      MONGO_INITDB_USERNAME: inventory-service-user
+      MONGO_INITDB-PASSWORD: inventory-service-password
+
+    volumes:
+      -mongo_inventory_data:/data/db
+
+    ports:
+      - "27017:27017"
+    
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+          "echo 'db.runCommand({ ping: 1 }).ok' | mongosh --quiet -u inventory-service-user -p inventory-service-password --authenticationDatabase admin",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    restart: unless-stopped
+    
+    networks:
+      - microservices-net
+
+volumes:
+  mongo_inventory_data:
+
+networks:
+  microservices-net:
+  external: true
