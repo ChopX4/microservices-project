@@ -1,13 +1,17 @@
 package part
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestList(t *testing.T) {
@@ -76,11 +80,50 @@ func TestList(t *testing.T) {
 		CreatedAt:    &t1,
 	}
 
+	ctx := context.Background()
+
+	mongoDbContainer, err := mongodb.Run(ctx, "mongo:6.0")
+	if err != nil {
+		t.Fatalf("failed to terminate container: %v", err)
+	}
+	defer func() {
+		if err := mongoDbContainer.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate container: %v", err)
+		}
+	}()
+
+	endpoint, err := mongoDbContainer.ConnectionString(ctx)
+	if err != nil {
+		t.Fatalf("failed to get connection string: %v", err)
+	}
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(endpoint))
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			t.Fatalf("failed to disconnect: %v", err)
+		}
+	}()
+
+	db := client.Database("test_inventory")
+
+	repo, err := NewRepository(db)
+	if err != nil {
+		t.Fatalf("failed to create repo: %v", err)
+	}
+
+	initialData := []any{repoPartEngine, repoPartFuel, repoPartWing}
+	_, err = db.Collection("parts").InsertMany(ctx, initialData)
+	if err != nil {
+		t.Fatalf("failed to seed data: %v", err)
+	}
+
 	tests := []struct {
-		name        string
-		filter      model.PartsFilter
-		wantParts   []model.Part
-		repoStorage map[string]repoModel.Part
+		name      string
+		filter    model.PartsFilter
+		wantParts []model.Part
 	}{
 		{
 			name: "Поиск по UUID (точное совпадение)",
@@ -88,11 +131,6 @@ func TestList(t *testing.T) {
 				UUIDS: []string{"uuid-1", "uuid-3"},
 			},
 			wantParts: []model.Part{partEngine, partFuel},
-			repoStorage: map[string]repoModel.Part{
-				repoPartEngine.UUID: repoPartEngine,
-				repoPartWing.UUID:   repoPartWing,
-				repoPartFuel.UUID:   repoPartFuel,
-			},
 		},
 		{
 			name: "Поиск по категориям",
@@ -100,11 +138,6 @@ func TestList(t *testing.T) {
 				Categories: []model.Category{model.CategoryEngine, model.CategoryWing},
 			},
 			wantParts: []model.Part{partEngine, partWing},
-			repoStorage: map[string]repoModel.Part{
-				repoPartEngine.UUID: repoPartEngine,
-				repoPartWing.UUID:   repoPartWing,
-				repoPartFuel.UUID:   repoPartFuel,
-			},
 		},
 		{
 			name: "Поиск по стране",
@@ -112,11 +145,6 @@ func TestList(t *testing.T) {
 				ManunufacturerCountries: []string{"Germany"},
 			},
 			wantParts: []model.Part{partEngine},
-			repoStorage: map[string]repoModel.Part{
-				repoPartEngine.UUID: repoPartEngine,
-				repoPartWing.UUID:   repoPartWing,
-				repoPartFuel.UUID:   repoPartFuel,
-			},
 		},
 		{
 			name: "Фильтр, который ничего не найдет",
@@ -124,30 +152,16 @@ func TestList(t *testing.T) {
 				Names: []string{"Non-existent-name"},
 			},
 			wantParts: []model.Part{},
-			repoStorage: map[string]repoModel.Part{
-				repoPartEngine.UUID: repoPartEngine,
-				repoPartWing.UUID:   repoPartWing,
-				repoPartFuel.UUID:   repoPartFuel,
-			},
 		},
 		{
 			name:      "Пустой фильтр - возвращаем все данные",
 			filter:    model.PartsFilter{},
 			wantParts: []model.Part{partEngine, partWing, partFuel},
-			repoStorage: map[string]repoModel.Part{
-				repoPartEngine.UUID: repoPartEngine,
-				repoPartWing.UUID:   repoPartWing,
-				repoPartFuel.UUID:   repoPartFuel,
-			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			repo := repository{
-				parts: test.repoStorage,
-			}
-
 			got, _ := repo.List(context.Background(), test.filter)
 
 			assert.ElementsMatch(t, test.wantParts, got)

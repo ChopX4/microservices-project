@@ -22,7 +22,7 @@ type Part struct {
 	Dimensions    Dimensions
 	Manufacturer  Manufacturer
 	Tags          []string
-	Metadata      map[string]Value
+	Metadata      map[string]any
 	CreatedAt     *time.Time
 	UpdatedAt     *time.Time
 }
@@ -47,19 +47,3 @@ type PartsFilter struct {
 	ManunufacturerCountries []string
 	Tags                    []string
 }
-
-type Value interface {
-	isKind()
-}
-
-type (
-	StringValue  struct{ V string }
-	Int64Value   struct{ V int64 }
-	Float64Value struct{ V float64 }
-	BoolValue    struct{ V bool }
-)
-
-func (StringValue) isKind()  {}
-func (Int64Value) isKind()   {}
-func (Float64Value) isKind() {}
-func (BoolValue) isKind()    {}

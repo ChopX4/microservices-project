@@ -16,7 +16,7 @@ func PartToModel(repo repoModel.Part) model.Part {
 		Dimensions:    DimensionsToModel(repo.Dimensions),
 		Manufacturer:  ManufacturerToModel(repo.Manufacturer),
 		Tags:          repo.Tags,
-		Metadata:      MetadataToModel(repo.Metadata),
+		Metadata:      repo.Metadata,
 		CreatedAt:     repo.CreatedAt,
 		UpdatedAt:     repo.UpdatedAt,
 	}
@@ -41,27 +41,4 @@ func ManufacturerToModel(repo repoModel.Manufacturer) model.Manufacturer {
 		Country: repo.Country,
 		WebSite: repo.WebSite,
 	}
-}
-
-func MetadataToModel(repoMeta map[string]repoModel.Value) map[string]model.Value {
-	if repoMeta == nil {
-		return nil
-	}
-
-	result := make(map[string]model.Value)
-
-	for key, val := range repoMeta {
-		switch v := val.(type) {
-		case repoModel.StringValue:
-			result[key] = model.StringValue{V: v.V}
-		case repoModel.Int64Value:
-			result[key] = model.Int64Value{V: v.V}
-		case repoModel.Float64Value:
-			result[key] = model.Float64Value{V: v.V}
-		case repoModel.BoolValue:
-			result[key] = model.BoolValue{V: v.V}
-		}
-	}
-
-	return result
 }

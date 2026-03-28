@@ -3,12 +3,13 @@ package order
 import (
 	"context"
 
-	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/google/uuid"
+
+	"github.com/ChopX4/raketka/order/internal/model"
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error) {
-	order, err := s.orderRepository.Get(req.OrderUuid)
+	order, err := s.orderRepository.Get(ctx, req.OrderUuid)
 	if err != nil {
 		return uuid.Nil, err
 	}

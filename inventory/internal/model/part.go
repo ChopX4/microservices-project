@@ -13,31 +13,31 @@ const (
 )
 
 type Part struct {
-	UUID          string
-	Name          string
-	Description   string
-	Price         float64
-	StockQuantity int64
-	Category      Category
-	Dimensions    Dimensions
-	Manufacturer  Manufacturer
-	Tags          []string
-	Metadata      map[string]Value
-	CreatedAt     *time.Time
-	UpdatedAt     *time.Time
+	UUID          string         `bson:"uuid"`
+	Name          string         `bson:"name"`
+	Description   string         `bson:"description"`
+	Price         float64        `bson:"price"`
+	StockQuantity int64          `bson:"stock_quantity"`
+	Category      Category       `bson:"category"`
+	Dimensions    Dimensions     `bson:"dimensions"`
+	Manufacturer  Manufacturer   `bson:"manufacturer"`
+	Tags          []string       `bson:"tags"`
+	Metadata      map[string]any `bson:"metadata"`
+	CreatedAt     *time.Time     `bson:"created_at"`
+	UpdatedAt     *time.Time     `bson:"updated_at"`
 }
 
 type Manufacturer struct {
-	Name    string
-	Country string
-	WebSite string
+	Name    string `bson:"name"`
+	Country string `bson:"country"`
+	WebSite string `bson:"website"`
 }
 
 type Dimensions struct {
-	Length float64
-	Width  float64
-	Height float64
-	Weight float64
+	Length float64 `bson:"length"`
+	Width  float64 `bson:"width"`
+	Height float64 `bson:"height"`
+	Weight float64 `bson:"weight"`
 }
 
 type PartsFilter struct {
@@ -48,6 +48,7 @@ type PartsFilter struct {
 	Tags                    []string
 }
 
+/*
 type Value interface {
 	isKind()
 }
@@ -63,3 +64,4 @@ func (StringValue) isKind()  {}
 func (Int64Value) isKind()   {}
 func (Float64Value) isKind() {}
 func (BoolValue) isKind()    {}
+*/

@@ -6,14 +6,24 @@ import (
 )
 
 func OrderByUUIDToRepo(model model.OrderByUUID) repoModel.OrderByUUID {
+	paymentMethod := PaymentMethodToRepo(model.PaymentMethod)
+	if paymentMethod == "" {
+		paymentMethod = "UNKNOWN"
+	}
+
+	status := OrderStatusToRepo(model.Status)
+	if status == "" {
+		status = "PENDING_PAYMENT"
+	}
+
 	return repoModel.OrderByUUID{
 		OrderUUID:       model.OrderUUID,
 		UserUUID:        model.UserUUID,
 		PartUuids:       model.PartUuids,
 		TotalPrice:      model.TotalPrice,
 		TransactionUUID: model.TransactionUUID,
-		PaymentMethod:   PaymentMethodToRepo(model.PaymentMethod),
-		Status:          OrderStatusToRepo(model.Status),
+		PaymentMethod:   paymentMethod,
+		Status:          status,
 	}
 }
 

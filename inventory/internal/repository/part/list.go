@@ -2,61 +2,66 @@ package part
 
 import (
 	"context"
+	"log"
+
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	"github.com/ChopX4/raketka/inventory/internal/repository/converter"
+	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
 )
 
-func (r *repository) List(_ context.Context, filter model.PartsFilter) ([]model.Part, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *repository) List(ctx context.Context, filter model.PartsFilter) ([]model.Part, error) {
+	mongoFilter := filterForList(filter)
 
-	storage := make([]model.Part, 0)
-
-	for _, v := range r.parts {
-		p := converter.PartToModel(v)
-
-		if len(filter.UUIDS) > 0 && !contains(filter.UUIDS, p.UUID) {
-			continue
+	cursor, err := r.collection.Find(ctx, mongoFilter)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		cerr := cursor.Close(ctx)
+		if cerr != nil {
+			log.Printf("failed to close cursor: %v\n", cerr)
 		}
+	}()
 
-		if len(filter.Names) > 0 && !contains(filter.Names, p.Name) {
-			continue
-		}
+	var parts []repoModel.Part
+	err = cursor.All(ctx, &parts)
+	if err != nil {
+		return nil, err
+	}
 
-		if len(filter.Categories) > 0 && !contains(filter.Categories, p.Category) {
-			continue
-		}
-
-		if len(filter.ManunufacturerCountries) > 0 && !contains(filter.ManunufacturerCountries, p.Manufacturer.Country) {
-			continue
-		}
-
-		if len(filter.Tags) > 0 {
-			match := false
-			for _, ft := range filter.Tags {
-				if contains(p.Tags, ft) {
-					match = true
-					break
-				}
-			}
-			if !match {
-				continue
-			}
-		}
-
-		storage = append(storage, p)
+	storage := make([]model.Part, 0, len(parts))
+	for _, v := range parts {
+		modelPart := converter.PartToModel(v)
+		storage = append(storage, modelPart)
 	}
 
 	return storage, nil
 }
 
-func contains[T comparable](slice []T, target T) bool {
-	for _, v := range slice {
-		if v == target {
-			return true
-		}
+func filterForList(filter model.PartsFilter) bson.M {
+	mongoFilter := bson.M{}
+
+	if len(filter.UUIDS) > 0 {
+		mongoFilter["uuid"] = bson.M{"$in": filter.UUIDS}
 	}
 
-	return false
+	if len(filter.Names) > 0 {
+		mongoFilter["name"] = bson.M{"$in": filter.Names}
+	}
+
+	if len(filter.Categories) > 0 {
+		mongoFilter["category"] = bson.M{"$in": filter.Categories}
+	}
+
+	if len(filter.ManunufacturerCountries) > 0 {
+		mongoFilter["manufacturer.country"] = bson.M{"$in": filter.ManunufacturerCountries}
+	}
+
+	if len(filter.Tags) > 0 {
+		mongoFilter["tags"] = bson.M{"$in": filter.Tags}
+	}
+
+	return mongoFilter
 }
