@@ -75,7 +75,7 @@ func TestList(t *testing.T) {
 		{
 			name: "Поиск по стране",
 			filter: model.PartsFilter{
-				ManunufacturerCountries: []string{"Germany"},
+				ManufacturerCountries: []string{"Germany"},
 			},
 			prepareMock: func(ir *mocks.InventoryRepository, f model.PartsFilter) {
 				ir.On("List", context.Background(), f).Return([]model.Part{partEngine}, nil)

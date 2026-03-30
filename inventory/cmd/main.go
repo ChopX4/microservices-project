@@ -15,18 +15,22 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	inventoryApi "github.com/ChopX4/raketka/inventory/internal/api/inventory/v1"
+	"github.com/ChopX4/raketka/inventory/internal/config"
 	inventoryRepo "github.com/ChopX4/raketka/inventory/internal/repository/part"
 	inventoryService "github.com/ChopX4/raketka/inventory/internal/service/part"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 )
 
 const (
-	grpcPort = 50051
-	mongoURI = "mongodb://inventory-service-user:inventory-service-password@localhost:27017/database?authSource=admin"
+	configPath = "./deploy/compose/inventory/.env"
 )
 
 func main() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	if err := config.Load(configPath); err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+
+	lis, err := net.Listen("tcp", config.AppConfig().Inventory.Address())
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
 		return
@@ -41,7 +45,7 @@ func main() {
 
 	ctx := context.Background()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.AppConfig().Mongo.URI()))
 	if err != nil {
 		log.Printf("failed to connect to database: %v\n", err)
 		return
@@ -58,7 +62,7 @@ func main() {
 		return
 	}
 
-	db := client.Database("inventory-service")
+	db := client.Database(config.AppConfig().Mongo.DbName())
 
 	repo, err := inventoryRepo.NewRepository(db)
 	if err != nil {
@@ -74,7 +78,7 @@ func main() {
 	reflection.Register(s)
 
 	go func() {
-		log.Printf("🚀 gRPC server listening on %d\n", grpcPort)
+		log.Printf("🚀 gRPC server listening on %s\n", config.AppConfig().Inventory.Address())
 		err := s.Serve(lis)
 		if err != nil {
 			log.Printf("failed to serve: %v\n", err)

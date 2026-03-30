@@ -41,11 +41,11 @@ type Dimensions struct {
 }
 
 type PartsFilter struct {
-	UUIDS                   []string
-	Names                   []string
-	Categories              []Category
-	ManunufacturerCountries []string
-	Tags                    []string
+	UUIDS                 []string
+	Names                 []string
+	Categories            []Category
+	ManufacturerCountries []string
+	Tags                  []string
 }
 
 /*

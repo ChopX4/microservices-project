@@ -55,8 +55,8 @@ func filterForList(filter model.PartsFilter) bson.M {
 		mongoFilter["category"] = bson.M{"$in": filter.Categories}
 	}
 
-	if len(filter.ManunufacturerCountries) > 0 {
-		mongoFilter["manufacturer.country"] = bson.M{"$in": filter.ManunufacturerCountries}
+	if len(filter.ManufacturerCountries) > 0 {
+		mongoFilter["manufacturer.country"] = bson.M{"$in": filter.ManufacturerCountries}
 	}
 
 	if len(filter.Tags) > 0 {

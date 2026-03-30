@@ -142,7 +142,7 @@ func TestList(t *testing.T) {
 		{
 			name: "Поиск по стране",
 			filter: model.PartsFilter{
-				ManunufacturerCountries: []string{"Germany"},
+				ManufacturerCountries: []string{"Germany"},
 			},
 			wantParts: []model.Part{partEngine},
 		},

@@ -2,7 +2,7 @@ version: '3'
 
 # Глобальные переменные проекта
 vars:
-  GO_VERSION: '1.25'
+  GO_VERSION: '1.24'
   GOLANGCI_LINT_VERSION: 'v2.1.5'
   GCI_VERSION: 'v0.13.6'
   GOFUMPT_VERSION: 'v0.8.0'
@@ -13,6 +13,7 @@ vars:
   YQ_VERSION: 'v4.45.2'
   MOCKERY_VERSION: 'v2.53.3'
   GRPCURL_VERSION: 'v1.9.3'
+  ENVSUBST_VERSION: 'v1.4.3'
 
   BIN_DIR: '{{.ROOT_DIR}}/bin'
   GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
@@ -25,6 +26,8 @@ vars:
   PROTOC_GEN_GO_GRPC: '{{.BIN_DIR}}/protoc-gen-go-grpc'
   MOCKERY: "{{.BIN_DIR}}/mockery"
   GRPCURL: '{{.BIN_DIR}}/grpcurl'
+  ENVSUBST: '{{.BIN_DIR}}/envsubst'
+  ENVDIR: '{{.ROOT_DIR}}/deploy/env'
 
   NODE_MODULES_DIR: '{{.ROOT_DIR}}/node_modules/.bin'
   REDOCLY: '{{.NODE_MODULES_DIR}}/redocly'
@@ -39,6 +42,7 @@ vars:
   POSTGRES_DSN: 'postgres://order-service-user:order-service-password@localhost:5432/order-service?sslmode=disable'
 
   MODULES: assembly inventory order payment platform iam notification
+  SERVICES: core,assembly,inventory,order,payment,iam,notification
 
 tasks:
   install-formatters:
@@ -90,7 +94,7 @@ tasks:
         for module in {{.MODULES}}; do
           if [ -d "$module" ]; then
             echo "🎯 Сортируем импорты в $module"
-            find $module -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GCI}} write -s standard -s default -s "prefix(github.com/ChopX4/raketka)" {} +
+            find $module -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GCI}} write -s standard -s default -s "prefix(github.com/olezhek28/microservices-course-olezhek-solution)" {} +
           fi
         done
 
@@ -354,13 +358,15 @@ tasks:
     summary: |
       Запускает юнит-тесты для указанных модулей проекта.
       Можно указать конкретные модули через переменную MODULES.
+      Исключаются интеграционные тесты в директориях integration и tests/integration.
+      Также исключаются тесты с тегом "integration".
     cmds:
       - |
         ERR=0
         for mod in {{.MODULES}}; do
           if [ -d "$mod" ]; then
-            echo "🧪 Тестируем модуль $mod"
-            go test -v ./$mod/... || ERR=1
+            echo "🧪 Тестируем модуль $mod (только юнит-тесты)"
+            go test -v -tags="!integration" $(go list ./$mod/... | grep -v -E '(/integration|/tests/integration|/integrationtests)') || ERR=1
           fi
         done
         exit $ERR
@@ -448,9 +454,11 @@ tasks:
           exit 1
         fi
 
+        # Извлекаем UUID первой детали для дальнейших тестов
         PART_UUID=$(echo $PARTS_RESPONSE | grep -o '"uuid": "[^"]*' | head -1 | cut -d'"' -f4)
         if [ -z "$PART_UUID" ]; then
           echo "❌ Не удалось найти UUID детали в ответе."
+          echo "🔍 Ответ сервера: $PARTS_RESPONSE"
           exit 1
         fi
         echo "✅ Успешно получен список деталей, первая UUID: $PART_UUID"
@@ -459,89 +467,229 @@ tasks:
         echo "🔍 Тест 2: Получение информации о детали по UUID"
         PART_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"uuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
 
+        if [[ -z "$PART_RESPONSE" || "$PART_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось получить информацию о детали."
+          echo "🔍 Ответ сервера: $PART_RESPONSE"
+          exit 1
+        fi
+
+        # Извлекаем имя детали 
         PART_NAME=$(echo $PART_RESPONSE | grep -o '"name": "[^"]*' | cut -d'"' -f4)
+        if [ -z "$PART_NAME" ]; then
+          echo "❌ Не удалось извлечь имя детали из ответа."
+          echo "🔍 Ответ сервера: $PART_RESPONSE"
+          exit 1
+        fi
         echo "✅ Успешно получена деталь: $PART_NAME"
 
         echo
         echo "👤 Тест 3: Создание пользователя для тестов"
+        # Генерируем уникальный UUID для пользователя
         USER_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
         echo "✅ Сгенерирован UUID пользователя: $USER_UUID"
 
         echo
         echo "📝 Тест 4: Создание заказа (REST API)"
-        # Добавляем все необходимые поля, чтобы репозиторий не падал
         ORDER_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
-          -d "{
-            \"user_uuid\":\"$USER_UUID\",
-            \"part_uuids\":[\"$PART_UUID\"],
-            \"total_price\": 100.0,
-            \"payment_method\": \"CASH\"
-          }")
+          -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
 
-        # Ищем либо order_uuid, либо uuid
-        ORDER_UUID=$(echo $ORDER_RESPONSE | grep -oE '"(order_uuid|uuid)":"[^"]*' | cut -d'"' -f4)
-        
-        if [ -z "$ORDER_UUID" ]; then
-          echo "❌ Не удалось извлечь UUID заказа из ответа."
+        if [[ -z "$ORDER_RESPONSE" || "$ORDER_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось создать заказ."
           echo "🔍 Ответ сервера: $ORDER_RESPONSE"
           exit 1
+        fi
+
+        # Извлекаем UUID заказа с учетом разных форматов JSON
+        ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"uuid":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER_UUID" ]; then
+          ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"uuid": "[^"]*' | cut -d'"' -f4)
+          if [ -z "$ORDER_UUID" ]; then
+            echo "❌ Не удалось извлечь UUID заказа из ответа."
+            echo "🔍 Ответ сервера: $ORDER_RESPONSE"
+            exit 1
+          fi
         fi
         echo "✅ Успешно создан заказ с UUID: $ORDER_UUID"
 
         echo
-        echo "📊 Тест 5: Проверка начального статуса заказа"
+        echo "📊 Тест 5: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
         ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
-        ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
-        
-        if [[ "$ORDER_STATUS" != *"PENDING_PAYMENT"* ]]; then
-          echo "❌ Неверный начальный статус. Ожидался PENDING_PAYMENT, получен: $ORDER_STATUS"
+
+        if [[ -z "$ORDER_INFO_RESPONSE" || "$ORDER_INFO_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось получить информацию о заказе."
+          echo "🔍 Ответ сервера: $ORDER_INFO_RESPONSE"
           exit 1
         fi
-        echo "✅ Статус корректный: $ORDER_STATUS"
+
+        # Извлекаем статус заказа с учетом разных форматов JSON
+        ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER_STATUS" ]; then
+          ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+          if [ -z "$ORDER_STATUS" ]; then
+            echo "❌ Не удалось извлечь статус заказа из ответа."
+            echo "🔍 Ответ сервера: $ORDER_INFO_RESPONSE"
+            exit 1
+          fi
+        fi
+
+        # Проверяем, что начальный статус PENDING_PAYMENT
+        if [[ "$ORDER_STATUS" != *"PENDING_PAYMENT"* ]]; then
+          echo "❌ Неверный начальный статус заказа. Ожидался PENDING_PAYMENT, получен: $ORDER_STATUS"
+          exit 1
+        fi
+        echo "✅ Начальный статус заказа корректный: $ORDER_STATUS"
 
         echo
         echo "💰 Тест 6: Оплата заказа (REST API)"
-        # Шлем CARD вместо PAYMENT_METHOD_CARD для соответствия ENUM в БД
         PAY_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_UUID/pay" \
           -H "Content-Type: application/json" \
-          -d "{\"payment_method\":\"CARD\"}")
+          -d "{\"payment_method\":\"PAYMENT_METHOD_CARD\"}")
 
+        if [[ "$PAY_RESPONSE" == *"error"* ]]; then
+          echo "❌ Ошибка при оплате заказа."
+          echo "🔍 Ответ сервера: $PAY_RESPONSE"
+          exit 1
+        fi
         echo "✅ Заказ успешно оплачен"
 
         echo
-        echo "📊 Тест 7: Проверка статуса после оплаты"
+        echo "📊 Тест 7: Проверка статуса после оплаты (должен быть PAID)"
         ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
-        ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
 
+        # Извлекаем статус заказа
+        ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER_STATUS" ]; then
+          ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+        fi
+
+        # Проверяем, что статус стал PAID
         if [[ "$ORDER_STATUS" != *"PAID"* && "$ORDER_STATUS" != *"ASSEMBLED"* ]]; then
-          echo "❌ Ошибка статуса. Ожидался PAID, получен: $ORDER_STATUS"
+          echo "❌ Неверный статус заказа после оплаты. Ожидался PAID или ASSEMBLED, получен: $ORDER_STATUS"
           exit 1
         fi
-        echo "✅ Статус после оплаты: $ORDER_STATUS"
+        echo "✅ Статус заказа после оплаты: $ORDER_STATUS"
 
         echo
-        echo "📝 Тест 8: Создание второго заказа для отмены"
+        echo "📝 Тест 8: Создание второго заказа для отмены (REST API)"
         ORDER2_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
-        ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -oE '"(order_uuid|uuid)":"[^"]*' | cut -d'"' -f4)
-        echo "✅ Создан второй заказ: $ORDER2_UUID"
+
+        if [[ -z "$ORDER2_RESPONSE" || "$ORDER2_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось создать второй заказ."
+          echo "🔍 Ответ сервера: $ORDER2_RESPONSE"
+          exit 1
+        fi
+
+        # Извлекаем UUID второго заказа с учетом разных форматов JSON
+        ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"uuid":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER2_UUID" ]; then
+          ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"uuid": "[^"]*' | cut -d'"' -f4)
+          if [ -z "$ORDER2_UUID" ]; then
+            echo "❌ Не удалось извлечь UUID второго заказа из ответа."
+            echo "🔍 Ответ сервера: $ORDER2_RESPONSE"
+            exit 1
+          fi
+        fi
+        echo "✅ Успешно создан второй заказ с UUID: $ORDER2_UUID"
+
+        # Проверяем его начальный статус
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER2_STATUS" ]; then
+          ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+        fi
+
+        if [[ "$ORDER2_STATUS" != *"PENDING_PAYMENT"* ]]; then
+          echo "❌ Неверный начальный статус второго заказа. Ожидался PENDING_PAYMENT, получен: $ORDER2_STATUS"
+          exit 1
+        fi
+        echo "✅ Начальный статус второго заказа: $ORDER2_STATUS"
 
         echo
-        echo "❌ Тест 9: Отмена второго заказа"
-        sleep 1
+        echo "❌ Тест 9: Отмена второго заказа (REST API)"
+        echo "Ожидаем 2 секунды перед отменой..."
+        sleep 2
+
         curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel"
+
+        echo "Проверяем статус после отмены..."
         
         ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        if [ -z "$ORDER2_STATUS" ]; then
+          ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+        fi
 
-        # Проверка на CANCELED (одна L, как в твоей миграции) или CANCELLED
-        if [[ "$ORDER2_STATUS" != *"CANCE"* ]]; then
-          echo "❌ Ошибка отмены. Получен статус: $ORDER2_STATUS"
+        if [[ "$ORDER2_STATUS" != *"CANCELLED"* ]]; then
+          echo "❌ Неверный статус отмененного заказа. Ожидался CANCELLED, получен: $ORDER2_STATUS"
+          echo "🔍 Детали заказа: $ORDER2_INFO"
           exit 1
         fi
-        echo "✅ Статус после отмены: $ORDER2_STATUS"
+        echo "✅ Статус второго заказа после отмены: $ORDER2_STATUS"
 
         echo
         echo "🎉 Все тесты API успешно выполнены!"
+
+  env:install-envsubst:
+    desc: "Устанавливает envsubst в bin/"
+    cmds:
+      - |
+        [ -f {{.ENVSUBST}} ] || {
+          echo "📦 Устанавливаем envsubst версии {{.ENVSUBST_VERSION}}..."
+          GOBIN={{.BIN_DIR}} go install github.com/a8m/envsubst/cmd/envsubst@{{.ENVSUBST_VERSION}}
+        }
+        echo "✅ envsubst установлен: {{.ENVSUBST}}"
+
+  env:generate:
+    desc: "Генерирует .env файлы для всех сервисов из шаблонов и единого файла конфигурации"
+    deps: [ env:install-envsubst ]
+    cmds:
+      - |
+        ENV_FILE="{{.ENVDIR}}/.env"
+        TEMPLATE_FILE="{{.ENVDIR}}/.env.template"
+        SCRIPT="{{.ENVDIR}}/generate-env.sh"
+        
+        if [ ! -f "$ENV_FILE" ]; then
+          if [ -f "$TEMPLATE_FILE" ]; then
+            echo "🔄 Файл $ENV_FILE не найден, создаем из шаблона $TEMPLATE_FILE"
+            cp "$TEMPLATE_FILE" "$ENV_FILE"
+            echo "✅ Создан файл $ENV_FILE. Проверьте и отредактируйте значения переменных при необходимости."
+          else
+            echo "❌ Шаблон $TEMPLATE_FILE не найден!"
+            exit 1
+          fi
+        fi
+        
+        chmod +x "$SCRIPT"
+        # Передаем список сервисов в виде строки с разделителями-запятыми
+        export SERVICES="{{.SERVICES}}"
+        ENV_SUBST={{.ENVSUBST}} "$SCRIPT"
+      
+  test-integration:
+    desc: "Запускает интеграционные тесты для указанных модулей"
+    summary: |
+      Запускает интеграционные тесты для модулей, указанных через переменную MODULES.
+      Использует тег "integration" для идентификации интеграционных тестов.
+    cmds:
+      - |
+        ERR=0
+        echo "🚀 Запуск интеграционных тестов (по тегу integration) для модулей: {{.MODULES}}"
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ]; then
+            echo "🧪 Проверка модуля $mod на наличие интеграционных тестов"
+            
+            # Проверяем наличие файлов с тегом integration
+            HAS_TESTS=$(grep -r "//go:build integration" $mod --include="*.go" | wc -l)
+            
+            if [ "$HAS_TESTS" -eq 0 ]; then
+              echo "⚠️ Модуль $mod не содержит интеграционных тестов (с тегом integration), пропускаем"
+              continue
+            fi
+            
+            echo "▶️ Запуск интеграционных тестов для $mod"
+            go test -v -tags=integration ./$mod/... || ERR=1
+          fi
+        done
+        exit $ERR

@@ -42,11 +42,11 @@ func PartsFilterToModel(filter *inventory_v1.PartsFilter) model.PartsFilter {
 	}
 
 	return model.PartsFilter{
-		UUIDS:                   filter.GetUuids(),
-		Names:                   filter.GetNames(),
-		Categories:              categoriesStorage,
-		ManunufacturerCountries: filter.GetManufacturerCountries(),
-		Tags:                    filter.GetTags(),
+		UUIDS:                 filter.GetUuids(),
+		Names:                 filter.GetNames(),
+		Categories:            categoriesStorage,
+		ManufacturerCountries: filter.GetManufacturerCountries(),
+		Tags:                  filter.GetTags(),
 	}
 }
 
