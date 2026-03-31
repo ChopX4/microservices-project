@@ -5,16 +5,14 @@ services:
 
     container_name: postgres-order
 
-    environment:
-      POSTGRES_DB: order-service
-      POSTGRES_USER: order-service-user
-      POSTGRES_PASSWORD: order-service-password
+    env_file:
+      - .env
     
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
     
     ports:
-      - "5432:5432"
+      - "{EXTERNAL_POSTGRES_PORT}:5432"
       # Пробрасываем внутренний порт PostgreSQL (5432) на порт хоста
       # Это нужно, чтобы другие сервисы или инструменты могли подключиться к базе
 

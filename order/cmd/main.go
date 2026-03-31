@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +21,7 @@ import (
 	orderApi "github.com/ChopX4/raketka/order/internal/api/order/v1"
 	orderInventoryClient "github.com/ChopX4/raketka/order/internal/clients/grpc/inventory"
 	orderPaymentClient "github.com/ChopX4/raketka/order/internal/clients/grpc/payment"
+	"github.com/ChopX4/raketka/order/internal/config"
 	migrator "github.com/ChopX4/raketka/order/internal/migrator"
 	repo "github.com/ChopX4/raketka/order/internal/repository/order"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
@@ -30,19 +31,17 @@ import (
 )
 
 const (
-	httpPort           = "8080"
-	paymentAddress     = "localhost:50052"
-	inventoryAddress   = "localhost:50051"
-	dbURI              = "postgres://order-service-user:order-service-password@localhost:5432/order-service?sslmode=disable"
-	orderMigrationsDir = "./order/migrations"
-	// Таймауты для HTTP-сервера
-	readHeaderTimeout = 5 * time.Second
-	shutdownTimeout   = 10 * time.Second
+	shutdownTimeout = 10 * time.Second
+	configPath      = "./deploy/compose/order/.env"
 )
 
 func main() {
+	if err := config.Load(configPath); err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+
 	paymentCon, err := grpc.NewClient(
-		paymentAddress,
+		config.AppConfig().Payment.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -56,7 +55,7 @@ func main() {
 	}()
 
 	inventoryCon, err := grpc.NewClient(
-		inventoryAddress,
+		config.AppConfig().Inventory.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -76,13 +75,13 @@ func main() {
 
 	ctx := context.Background()
 
-	db, err := sql.Open("pgx", dbURI)
+	db, err := sql.Open("pgx", config.AppConfig().Postgre.URI())
 	if err != nil {
 		log.Printf("failed to connect to database for migrations: %v\n", err)
 		return
 	}
 
-	migratorRunner := migrator.NewMigrator(db, orderMigrationsDir)
+	migratorRunner := migrator.NewMigrator(db, config.AppConfig().Postgre.MigrationsPath())
 	err = migratorRunner.Up()
 	if err != nil {
 		if cerr := db.Close(); cerr != nil {
@@ -96,7 +95,7 @@ func main() {
 		log.Printf("Ошибка закрытия подключения к базе данных: %v\n", err)
 	}
 
-	conn, err := pgxpool.New(ctx, dbURI)
+	conn, err := pgxpool.New(ctx, config.AppConfig().Postgre.URI())
 	if err != nil {
 		log.Printf("failed to connect to database: %v\n", err)
 		return
@@ -126,13 +125,13 @@ func main() {
 	r.Mount("/", orderServer)
 
 	server := &http.Server{
-		Addr:              net.JoinHostPort("localhost", httpPort),
+		Addr:              config.AppConfig().Order.Address(),
 		Handler:           r,
-		ReadHeaderTimeout: readHeaderTimeout,
+		ReadHeaderTimeout: config.AppConfig().Order.ReadTimeout(),
 	}
 
 	go func() {
-		log.Printf("🚀 HTTP-сервер запущен на порту %s\n", httpPort)
+		log.Printf("🚀 HTTP-сервер запущен на адресе %s\n", config.AppConfig().Order.Address())
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Printf("❌ Ошибка запуска сервера: %v\n", err)
