@@ -1,20 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net"
-	"os"
-	"os/signal"
 	"syscall"
+	"os/signal"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
-	paymentApi "github.com/ChopX4/raketka/payment/internal/api/payment/v1"
+	"github.com/ChopX4/raketka/payment/internal/app"
 	"github.com/ChopX4/raketka/payment/internal/config"
-	paymentService "github.com/ChopX4/raketka/payment/internal/service/method"
-	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
+	"github.com/ChopX4/raketka/platform/pkg/closer"
 )
 
 const configPath = "./deploy/compose/payment/.env"
@@ -24,38 +19,18 @@ func main() {
 		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
-	lis, err := net.Listen("tcp", config.AppConfig().Payment.Address())
+	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer appCancel()
+
+	closer.Configure(syscall.SIGINT, syscall.SIGTERM)
+
+	application, err := app.New(appCtx)
 	if err != nil {
-		log.Printf("failed to listen: %v\n", err)
+		log.Printf("failed to init app: %v\n", err)
 		return
 	}
-	defer func() {
-		if cerr := lis.Close(); cerr != nil {
-			log.Printf("failed to close listener: %v\n", cerr)
-		}
-	}()
 
-	s := grpc.NewServer()
-
-	service := paymentService.NewService()
-	api := paymentApi.NewApi(service)
-
-	payment_v1.RegisterPaymentServiceServer(s, api)
-
-	reflection.Register(s)
-
-	go func() {
-		log.Printf("🚀 gRPC server listening on %s\n", config.AppConfig().Payment.Address())
-		if err := s.Serve(lis); err != nil {
-			log.Printf("failed to serve: %v\n", err)
-			return
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("🛑 Shutting down gRPC server...")
-	s.GracefulStop()
-	log.Println("✅ Server stopped")
+	if err = application.Run(appCtx); err != nil {
+		log.Printf("failed to run app: %v\n", err)
+	}
 }
