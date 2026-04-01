@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.uber.org/zap"
 
 	inventoryAPI "github.com/ChopX4/raketka/inventory/internal/api/inventory/v1"
 	"github.com/ChopX4/raketka/inventory/internal/config"
@@ -15,6 +16,7 @@ import (
 	"github.com/ChopX4/raketka/inventory/internal/service"
 	inventoryService "github.com/ChopX4/raketka/inventory/internal/service/part"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 )
 
@@ -49,10 +51,12 @@ func (d *diContainer) InventoryService(ctx context.Context) service.InventorySer
 	return d.inventoryService
 }
 
+// InventoryRepository создает MongoDB-репозиторий с подготовленными индексами.
 func (d *diContainer) InventoryRepository(ctx context.Context) repository.InventoryRepository {
 	if d.inventoryRepository == nil {
-		repo, err := inventoryRepository.NewRepository(d.MongoDBHandle(ctx))
+		repo, err := inventoryRepository.NewRepository(ctx, d.MongoDBHandle(ctx))
 		if err != nil {
+			logger.Error(ctx, "failed to create inventory repository", zap.Error(err))
 			panic(fmt.Sprintf("failed to create inventory repository: %v", err))
 		}
 
@@ -62,14 +66,17 @@ func (d *diContainer) InventoryRepository(ctx context.Context) repository.Invent
 	return d.inventoryRepository
 }
 
+// MongoDBClient создает и проверяет клиент MongoDB.
 func (d *diContainer) MongoDBClient(ctx context.Context) *mongo.Client {
 	if d.mongoDBClient == nil {
 		client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.AppConfig().Mongo.URI()))
 		if err != nil {
+			logger.Error(ctx, "failed to connect to MongoDB", zap.Error(err))
 			panic(fmt.Sprintf("failed to connect to MongoDB: %v", err))
 		}
 
 		if err = client.Ping(ctx, readpref.Primary()); err != nil {
+			logger.Error(ctx, "failed to ping MongoDB", zap.Error(err))
 			panic(fmt.Sprintf("failed to ping MongoDB: %v", err))
 		}
 

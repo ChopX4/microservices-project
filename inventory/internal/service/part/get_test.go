@@ -18,9 +18,9 @@ func TestGet(t *testing.T) {
 	}
 
 	now := time.Now()
-	testUuid := "valid uuid"
+	testUUID := "550e8400-e29b-41d4-a716-446655440000"
 	testPart := model.Part{
-		UUID:          testUuid,
+		UUID:          testUUID,
 		Name:          "Rocket",
 		Description:   "Rocket12",
 		Price:         12322.12,
@@ -37,18 +37,18 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:     "детать найдена",
-			testUuid: testUuid,
+			testUuid: testUUID,
 			preMock: func() {
-				mockRepo.On("Get", context.Background(), testUuid).Return(testPart, nil)
+				mockRepo.On("Get", context.Background(), testUUID).Return(testPart, nil)
 			},
 			expPart:  testPart,
 			expError: nil,
 		},
 		{
 			name:     "Деталь не найдена",
-			testUuid: "daskd198sdn",
+			testUuid: "550e8400-e29b-41d4-a716-446655440001",
 			preMock: func() {
-				mockRepo.On("Get", context.Background(), "daskd198sdn").Return(model.Part{}, model.ErrPartNotFound)
+				mockRepo.On("Get", context.Background(), "550e8400-e29b-41d4-a716-446655440001").Return(model.Part{}, model.ErrPartNotFound)
 			},
 			expPart:  model.Part{},
 			expError: model.ErrPartNotFound,

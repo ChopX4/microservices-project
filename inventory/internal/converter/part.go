@@ -34,6 +34,10 @@ func PartToProto(part model.Part) *inventory_v1.Part {
 }
 
 func PartsFilterToModel(filter *inventory_v1.PartsFilter) model.PartsFilter {
+	if filter == nil {
+		return model.PartsFilter{}
+	}
+
 	categoriesStorage := make([]model.Category, 0, len(filter.Categories))
 
 	protoCats := filter.GetCategories()
@@ -51,11 +55,20 @@ func PartsFilterToModel(filter *inventory_v1.PartsFilter) model.PartsFilter {
 }
 
 func CategoryToProto(category model.Category) inventory_v1.Category {
+	if !category.IsValid() {
+		return inventory_v1.Category_CATEGORY_UNKNOWN_UNSPECIFIED
+	}
+
 	return inventory_v1.Category(category)
 }
 
 func CategoryToModel(category inventory_v1.Category) model.Category {
-	return model.Category(category)
+	modelCategory := model.Category(category)
+	if !modelCategory.IsValid() {
+		return model.CategoryUnknown
+	}
+
+	return modelCategory
 }
 
 func DimensionsToProto(dimensions model.Dimensions) *inventory_v1.Dimensions {
@@ -84,23 +97,25 @@ func MetadataToProto(meta map[string]any) map[string]*inventory_v1.Value {
 
 	for key, val := range meta {
 		protoVal := &inventory_v1.Value{}
+		supported := true
 
 		switch v := val.(type) {
 		case string:
-			// В твоем коде: структура Value_StringValue, поле StringValue
 			protoVal.Kind = &inventory_v1.Value_StringValue{StringValue: v}
 		case int64:
-			// В твоем коде: структура Value_Int64Value, поле Int64Value
 			protoVal.Kind = &inventory_v1.Value_Int64Value{Int64Value: v}
 		case int:
-			// В твоем коде: структура Value_Int64Value, поле Int64Value
 			protoVal.Kind = &inventory_v1.Value_Int64Value{Int64Value: int64(v)}
 		case float64:
-			// В твоем коде: структура Value_DoubleValue (у тебя в прото Double, а не Float64)
 			protoVal.Kind = &inventory_v1.Value_DoubleValue{DoubleValue: v}
 		case bool:
-			// В твоем коде: структура Value_BoolValue, поле BoolValue
 			protoVal.Kind = &inventory_v1.Value_BoolValue{BoolValue: v}
+		default:
+			supported = false
+		}
+
+		if !supported {
+			continue
 		}
 
 		result[key] = protoVal

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -111,3 +112,21 @@ func (StringValue) isKind()  {}
 func (Int64Value) isKind()   {}
 func (Float64Value) isKind() {}
 func (BoolValue) isKind()    {}
+
+func (m PaymentMethod) IsValid() bool {
+	switch m {
+	case PaymentMethodCard, PaymentMethodSPB, PaymentMethodCreditCard, PaymentMethodInvestorMoney:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsValidUUID(value string) bool {
+	if strings.TrimSpace(value) == "" {
+		return false
+	}
+
+	_, err := uuid.Parse(value)
+	return err == nil
+}

@@ -9,9 +9,21 @@ import (
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error) {
+	if !model.IsValidUUID(req.OrderUuid) {
+		return uuid.Nil, model.ErrBadRequest
+	}
+
+	if !req.PaymentMethod.IsValid() {
+		return uuid.Nil, model.ErrBadRequest
+	}
+
 	order, err := s.orderRepository.Get(ctx, req.OrderUuid)
 	if err != nil {
 		return uuid.Nil, err
+	}
+
+	if order.Status == model.OrderStatusCanceled || order.Status == model.OrderStatusPaid {
+		return uuid.Nil, model.ErrConflict
 	}
 
 	stringTransactionUUID, err := s.paymentClient.Pay(ctx, req)

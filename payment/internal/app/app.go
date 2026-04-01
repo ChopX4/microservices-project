@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 
@@ -77,7 +78,7 @@ func (a *App) initListener(_ context.Context) error {
 	}
 
 	closer.AddNamed("TCP listener", func(context.Context) error {
-		if err := listener.Close(); err != nil && err != net.ErrClosed {
+		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 

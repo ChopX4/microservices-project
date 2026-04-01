@@ -22,6 +22,7 @@ type App struct {
 	httpServer  *http.Server
 }
 
+// New создает приложение и последовательно поднимает его инфраструктурные зависимости.
 func New(ctx context.Context) (*App, error) {
 	a := &App{}
 
@@ -32,6 +33,7 @@ func New(ctx context.Context) (*App, error) {
 	return a, nil
 }
 
+// Run запускает HTTP-сервер приложения.
 func (a *App) Run(ctx context.Context) error {
 	return a.runHTTPServer(ctx)
 }
@@ -71,11 +73,13 @@ func (a *App) initCloser(_ context.Context) error {
 	return nil
 }
 
-func (a *App) initMigrations(_ context.Context) error {
-	a.diContainer.RunMigrations()
+// initMigrations применяет миграции до создания рабочего runtime pool и старта HTTP-сервера.
+func (a *App) initMigrations(ctx context.Context) error {
+	a.diContainer.RunMigrations(ctx)
 	return nil
 }
 
+// initHTTPServer собирает OpenAPI-хендлер, middleware и регистрирует graceful shutdown сервера.
 func (a *App) initHTTPServer(ctx context.Context) error {
 	orderServer, err := order_v1.NewServer(a.diContainer.OrderHandler(ctx))
 	if err != nil {

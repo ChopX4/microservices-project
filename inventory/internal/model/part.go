@@ -48,20 +48,11 @@ type PartsFilter struct {
 	Tags                  []string
 }
 
-/*
-type Value interface {
-	isKind()
+func (c Category) IsValid() bool {
+	switch c {
+	case CategoryEngine, CategoryFuel, CategoryPorthole, CategoryWing:
+		return true
+	default:
+		return false
+	}
 }
-
-type (
-	StringValue  struct{ V string }
-	Int64Value   struct{ V int64 }
-	Float64Value struct{ V float64 }
-	BoolValue    struct{ V bool }
-)
-
-func (StringValue) isKind()  {}
-func (Int64Value) isKind()   {}
-func (Float64Value) isKind() {}
-func (BoolValue) isKind()    {}
-*/

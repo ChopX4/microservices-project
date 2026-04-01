@@ -94,7 +94,7 @@ tasks:
         for module in {{.MODULES}}; do
           if [ -d "$module" ]; then
             echo "🎯 Сортируем импорты в $module"
-            find $module -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GCI}} write -s standard -s default -s "prefix(github.com/olezhek28/microservices-course-olezhek-solution)" {} +
+            find $module -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GCI}} write -s standard -s default -s "prefix(github.com/ChopX4/raketka)" {} +
           fi
         done
 
@@ -138,7 +138,7 @@ tasks:
         for mod in {{.MODULES}}; do
           if [ -d "$mod" ]; then
             echo "🔍 Линтим $mod module"
-            {{.GOLANGCI_LINT}} run $mod/... --config=.golangci.yml || ERR=1
+            GOFLAGS=-buildvcs=false {{.GOLANGCI_LINT}} run $mod/... --config=.golangci.yml || ERR=1
           fi
         done
         exit $ERR

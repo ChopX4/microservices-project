@@ -2,13 +2,14 @@ package part
 
 import (
 	"context"
-	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	"github.com/ChopX4/raketka/inventory/internal/repository/converter"
 	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (r *repository) List(ctx context.Context, filter model.PartsFilter) ([]model.Part, error) {
@@ -16,18 +17,20 @@ func (r *repository) List(ctx context.Context, filter model.PartsFilter) ([]mode
 
 	cursor, err := r.collection.Find(ctx, mongoFilter)
 	if err != nil {
+		logger.Error(ctx, "failed to list parts from mongo", zap.Any("filter", mongoFilter), zap.Error(err))
 		return nil, err
 	}
 	defer func() {
 		cerr := cursor.Close(ctx)
 		if cerr != nil {
-			log.Printf("failed to close cursor: %v\n", cerr)
+			logger.Error(ctx, "failed to close cursor", zap.Error(cerr))
 		}
 	}()
 
 	var parts []repoModel.Part
 	err = cursor.All(ctx, &parts)
 	if err != nil {
+		logger.Error(ctx, "failed to decode parts from mongo cursor", zap.Any("filter", mongoFilter), zap.Error(err))
 		return nil, err
 	}
 

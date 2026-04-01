@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 
@@ -21,6 +22,7 @@ type App struct {
 	listener    net.Listener
 }
 
+// New создает приложение и последовательно поднимает его инфраструктурные зависимости.
 func New(ctx context.Context) (*App, error) {
 	a := &App{}
 
@@ -77,7 +79,7 @@ func (a *App) initListener(_ context.Context) error {
 	}
 
 	closer.AddNamed("TCP listener", func(context.Context) error {
-		if err := listener.Close(); err != nil && err != net.ErrClosed {
+		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 

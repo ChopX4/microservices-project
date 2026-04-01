@@ -6,10 +6,12 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/inventory/internal/model"
 	repoConverter "github.com/ChopX4/raketka/inventory/internal/repository/converter"
 	repoModel "github.com/ChopX4/raketka/inventory/internal/repository/model"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (r *repository) Get(ctx context.Context, uuid string) (model.Part, error) {
@@ -21,6 +23,7 @@ func (r *repository) Get(ctx context.Context, uuid string) (model.Part, error) {
 			return model.Part{}, model.ErrPartNotFound
 		}
 
+		logger.Error(ctx, "failed to get part from mongo", zap.String("uuid", uuid), zap.Error(err))
 		return model.Part{}, err
 	}
 

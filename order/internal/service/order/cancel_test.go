@@ -27,7 +27,7 @@ func TestCancel(t *testing.T) {
 		TotalPrice:      1500.50,
 		TransactionUUID: transID,
 		PaymentMethod:   model.PaymentMethodCard,
-		Status:          model.OrderStatusPaid,
+		Status:          model.OrderStatusPendingPayment,
 	}
 
 	testOrderConflict := model.OrderByUUID{
@@ -67,7 +67,7 @@ func TestCancel(t *testing.T) {
 		},
 		{
 			name:      "Заказ не найден",
-			orderUuid: "testid",
+			orderUuid: uuid.New().String(),
 			prepareMock: func(or *mocks.OrderRepository, uuid string) {
 				or.On("Get", context.Background(), uuid).Return(model.OrderByUUID{}, model.ErrNotFound)
 			},

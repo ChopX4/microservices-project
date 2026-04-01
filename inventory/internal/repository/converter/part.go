@@ -23,7 +23,12 @@ func PartToModel(repo repoModel.Part) model.Part {
 }
 
 func CategoryToModel(repo repoModel.Category) model.Category {
-	return model.Category(repo)
+	category := model.Category(repo)
+	if !category.IsValid() {
+		return model.CategoryUnknown
+	}
+
+	return category
 }
 
 func DimensionsToModel(repo repoModel.Dimensions) model.Dimensions {

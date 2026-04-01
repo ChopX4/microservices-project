@@ -3,8 +3,11 @@ package inventory
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/ChopX4/raketka/order/internal/clients/converter"
 	"github.com/ChopX4/raketka/order/internal/model"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 )
 
@@ -15,6 +18,7 @@ func (c *inventoryClient) ListParts(ctx context.Context, filter model.PartsFilte
 
 	grpsReq, err := c.generatedClient.ListParts(ctx, grpcReq)
 	if err != nil {
+		logger.Error(ctx, "failed to list parts via inventory grpc", zap.Error(err))
 		return nil, err
 	}
 

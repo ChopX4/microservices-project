@@ -41,6 +41,7 @@ func (s *BadRequestError) SetMessage(val string) {
 	s.Message = val
 }
 
+func (*BadRequestError) cancelOrderRes()  {}
 func (*BadRequestError) createOrderRes()  {}
 func (*BadRequestError) getOrderByIdRes() {}
 func (*BadRequestError) orderPayRes()     {}
@@ -74,6 +75,7 @@ func (s *ConflictError) SetMessage(val string) {
 }
 
 func (*ConflictError) cancelOrderRes() {}
+func (*ConflictError) orderPayRes()    {}
 
 // Ref: #/components/schemas/create_order_request
 type CreateOrderRequest struct {

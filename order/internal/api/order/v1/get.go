@@ -12,6 +12,12 @@ import (
 func (a *api) GetOrderById(ctx context.Context, params order_v1.GetOrderByIdParams) (order_v1.GetOrderByIdRes, error) {
 	order, err := a.orderService.Get(ctx, params.OrderUUID.String())
 	if err != nil {
+		if errors.Is(err, model.ErrBadRequest) {
+			return &order_v1.BadRequestError{
+				Code:    400,
+				Message: "Bad request - validation error",
+			}, nil
+		}
 		if errors.Is(err, model.ErrNotFound) {
 			return &order_v1.NotFoundError{
 				Code:    404,

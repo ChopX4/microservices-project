@@ -109,7 +109,7 @@ func TestList(t *testing.T) {
 
 	db := client.Database("test_inventory")
 
-	repo, err := NewRepository(db)
+	repo, err := NewRepository(ctx, db)
 	if err != nil {
 		t.Fatalf("failed to create repo: %v", err)
 	}

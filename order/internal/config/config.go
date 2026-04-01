@@ -3,8 +3,9 @@ package config
 import (
 	"os"
 
-	"github.com/ChopX4/raketka/order/internal/config/envs"
 	"github.com/joho/godotenv"
+
+	"github.com/ChopX4/raketka/order/internal/config/envs"
 )
 
 var appConfig *config

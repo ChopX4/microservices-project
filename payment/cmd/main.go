@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"syscall"
 	"os/signal"
+	"syscall"
 
 	"github.com/ChopX4/raketka/payment/internal/app"
 	"github.com/ChopX4/raketka/payment/internal/config"
