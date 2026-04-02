@@ -6,10 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
 	repoModel "github.com/ChopX4/raketka/order/internal/repository/model"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (r *repository) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {
@@ -32,6 +34,7 @@ func (r *repository) Get(ctx context.Context, orderUUID string) (model.OrderByUU
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.OrderByUUID{}, model.ErrNotFound
 		}
+		logger.Error(ctx, "failed to get order from postgres", zap.String("order_uuid", orderUUID), zap.Error(err))
 		return model.OrderByUUID{}, err
 	}
 

@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error {
@@ -43,6 +45,7 @@ func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error 
 			return model.ErrAlreadyExists
 		}
 
+		logger.Error(ctx, "failed to create order in postgres", zap.String("order_uuid", order.OrderUUID.String()), zap.Error(err))
 		return err
 	}
 

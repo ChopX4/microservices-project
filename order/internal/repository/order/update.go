@@ -3,8 +3,11 @@ package order
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/ChopX4/raketka/order/internal/model"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (r *repository) Update(ctx context.Context, order model.OrderByUUID) error {
@@ -33,6 +36,7 @@ func (r *repository) Update(ctx context.Context, order model.OrderByUUID) error 
 		repoOrder.Status,
 	)
 	if err != nil {
+		logger.Error(ctx, "failed to update order in postgres", zap.String("order_uuid", order.OrderUUID.String()), zap.Error(err))
 		return err
 	}
 

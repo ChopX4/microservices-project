@@ -2,17 +2,21 @@ package method
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
 
 	"github.com/ChopX4/raketka/payment/internal/model"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (string, error) {
-	transaction_uuid := uuid.New()
+	if !model.IsValidUUID(req.OrderUuid) || !model.IsValidUUID(req.UserUuid) || !req.PaymentMethod.IsValid() {
+		return "", model.ErrBadRequest
+	}
 
-	log.Printf("Оплата прошла успешно, transaction_uuid: %s", transaction_uuid.String())
+	transactionUUID := uuid.New()
 
-	return transaction_uuid.String(), nil
+	logger.Info(ctx, "payment completed successfully")
+
+	return transactionUUID.String(), nil
 }

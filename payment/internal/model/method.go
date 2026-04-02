@@ -1,5 +1,7 @@
 package model
 
+import "github.com/google/uuid"
+
 type PaymentMethod int32
 
 const (
@@ -14,4 +16,18 @@ type PayOrderRequest struct {
 	OrderUuid     string
 	UserUuid      string
 	PaymentMethod PaymentMethod
+}
+
+func (m PaymentMethod) IsValid() bool {
+	switch m {
+	case PaymentMethodCard, PaymentMethodSPB, PaymentMethodCreditCard, PaymentMethodInvestorMoney:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsValidUUID(value string) bool {
+	_, err := uuid.Parse(value)
+	return err == nil
 }

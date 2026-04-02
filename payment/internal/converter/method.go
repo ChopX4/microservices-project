@@ -14,5 +14,10 @@ func PayOrderRequestToModel(payment *payment_v1.PayOrderRequest) model.PayOrderR
 }
 
 func PaymentMethodToModel(method payment_v1.PaymentMethod) model.PaymentMethod {
-	return model.PaymentMethod(method)
+	paymentMethod := model.PaymentMethod(method)
+	if !paymentMethod.IsValid() {
+		return model.PaymentMethodUnknown
+	}
+
+	return paymentMethod
 }

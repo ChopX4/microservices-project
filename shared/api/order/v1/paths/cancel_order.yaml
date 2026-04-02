@@ -19,6 +19,12 @@ post:
         application/json:
           schema:
             $ref: ../components/errors/not_found_error.yaml
+    '400':
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_request_error.yaml
     '409':
       description: the order has already been paid and cannot be cancelled
       content:

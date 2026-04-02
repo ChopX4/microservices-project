@@ -3,89 +3,43 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net"
-	"os"
 	"os/signal"
 	"syscall"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"go.uber.org/zap"
 
-	inventoryApi "github.com/ChopX4/raketka/inventory/internal/api/inventory/v1"
-	inventoryRepo "github.com/ChopX4/raketka/inventory/internal/repository/part"
-	inventoryService "github.com/ChopX4/raketka/inventory/internal/service/part"
-	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
+	"github.com/ChopX4/raketka/inventory/internal/app"
+	"github.com/ChopX4/raketka/inventory/internal/config"
+	"github.com/ChopX4/raketka/platform/pkg/closer"
+	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
-const (
-	grpcPort = 50051
-	mongoURI = "mongodb://inventory-service-user:inventory-service-password@localhost:27017/database?authSource=admin"
-)
+const configPath = "./deploy/compose/inventory/.env"
 
 func main() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	if err := config.Load(configPath); err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+
+	if err := logger.Init(
+		config.AppConfig().Logger.Level(),
+		config.AppConfig().Logger.AsJson(),
+	); err != nil {
+		panic(fmt.Errorf("failed to init logger: %w", err))
+	}
+
+	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer appCancel()
+
+	closer.Configure(syscall.SIGINT, syscall.SIGTERM)
+
+	application, err := app.New(appCtx)
 	if err != nil {
-		log.Printf("failed to listen: %v\n", err)
-		return
-	}
-	defer func() {
-		if cerr := lis.Close(); cerr != nil {
-			log.Printf("failed to close: %v\n", cerr)
-		}
-	}()
-
-	s := grpc.NewServer()
-
-	ctx := context.Background()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		log.Printf("failed to connect to database: %v\n", err)
-		return
-	}
-	defer func() {
-		cerr := client.Disconnect(ctx)
-		if cerr != nil {
-			log.Printf("failed to disconnect: %v\n", cerr)
-		}
-	}()
-
-	if err := client.Ping(ctx, nil); err != nil {
-		log.Printf("failed to ping database: %v\n", err)
+		logger.Error(appCtx, "failed to init app", zap.Error(err))
 		return
 	}
 
-	db := client.Database("inventory-service")
-
-	repo, err := inventoryRepo.NewRepository(db)
-	if err != nil {
-		log.Printf("failed to create repo: %v\n", err)
-		return
+	if err = application.Run(appCtx); err != nil {
+		logger.Error(appCtx, "failed to run app", zap.Error(err))
 	}
-
-	service := inventoryService.NewService(repo)
-	api := inventoryApi.NewApi(service)
-
-	inventory_v1.RegisterInventoryServiceServer(s, api)
-
-	reflection.Register(s)
-
-	go func() {
-		log.Printf("🚀 gRPC server listening on %d\n", grpcPort)
-		err := s.Serve(lis)
-		if err != nil {
-			log.Printf("failed to serve: %v\n", err)
-			return
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("🛑 Shutting down gRPC server...")
-	s.GracefulStop()
-	log.Println("✅ Server stopped")
 }

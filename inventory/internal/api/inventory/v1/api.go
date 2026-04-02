@@ -11,6 +11,7 @@ type api struct {
 	inventoryService service.InventoryService
 }
 
+// NewApi создает gRPC API inventory поверх сервисного слоя.
 func NewApi(inventoryService service.InventoryService) *api {
 	return &api{
 		inventoryService: inventoryService,

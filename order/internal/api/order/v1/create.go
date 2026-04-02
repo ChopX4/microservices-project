@@ -10,6 +10,13 @@ import (
 )
 
 func (a *api) CreateOrder(ctx context.Context, req *order_v1.CreateOrderRequest) (order_v1.CreateOrderRes, error) {
+	if req == nil {
+		return &order_v1.BadRequestError{
+			Code:    400,
+			Message: "Bad request - request is required",
+		}, nil
+	}
+
 	modelReq, err := a.orderService.Create(ctx, converter.OrderRequestToModel(req))
 	if err != nil {
 		if errors.Is(err, model.ErrBadRequest) {

@@ -7,12 +7,16 @@ import (
 )
 
 func (s *service) Cancel(ctx context.Context, orderUUID string) error {
+	if !model.IsValidUUID(orderUUID) {
+		return model.ErrBadRequest
+	}
+
 	order, err := s.orderRepository.Get(ctx, orderUUID)
 	if err != nil {
 		return err
 	}
 
-	if order.Status == model.OrderStatusCanceled {
+	if order.Status == model.OrderStatusCanceled || order.Status == model.OrderStatusPaid {
 		return model.ErrConflict
 	}
 
