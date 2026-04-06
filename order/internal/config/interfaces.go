@@ -2,25 +2,38 @@ package config
 
 import "time"
 
-type inventoryClientConfig interface {
+type InventoryClientConfig interface {
 	Address() string
 }
 
-type paymentClientConfig interface {
+type PaymentClientConfig interface {
 	Address() string
 }
 
-type orderConfig interface {
+type OrderConfig interface {
 	Address() string
 	ReadTimeout() time.Duration
 }
 
-type loggerConfig interface {
+type LoggerConfig interface {
 	Level() string
 	AsJson() bool
 }
 
-type postgreSQLConfig interface {
+type PostgreSQLConfig interface {
 	URI() string
 	MigrationsPath() string
+}
+
+type KafkaConfig interface {
+	Brokers() []string
+}
+
+type AssembledConsumerConfig interface {
+	Topic() string
+	GroupID() string
+}
+
+type OrderProducerConfig interface {
+	Topic() string
 }

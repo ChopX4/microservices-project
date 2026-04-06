@@ -12,7 +12,7 @@ var appConfig *config
 
 type config struct {
 	Inventory InventoryConfig
-	Logger    loggerConfig
+	Logger    LoggerConfig
 	Mongo     MongoConfig
 }
 

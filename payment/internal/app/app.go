@@ -39,8 +39,6 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
-		a.initLogger,
-		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
 	}
@@ -56,18 +54,6 @@ func (a *App) initDeps(ctx context.Context) error {
 
 func (a *App) initDI(_ context.Context) error {
 	a.diContainer = NewDIContainer()
-	return nil
-}
-
-func (a *App) initLogger(_ context.Context) error {
-	return logger.Init(
-		config.AppConfig().Logger.Level(),
-		config.AppConfig().Logger.AsJson(),
-	)
-}
-
-func (a *App) initCloser(_ context.Context) error {
-	closer.SetLogger(logger.Logger())
 	return nil
 }
 
