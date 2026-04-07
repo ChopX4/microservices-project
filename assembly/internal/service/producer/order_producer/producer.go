@@ -3,12 +3,13 @@ package orderproducer
 import (
 	"context"
 
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/ChopX4/raketka/assembly/internal/converter"
 	"github.com/ChopX4/raketka/assembly/internal/model"
 	"github.com/ChopX4/raketka/platform/pkg/kafka"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 type service struct {

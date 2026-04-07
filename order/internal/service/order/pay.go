@@ -22,7 +22,9 @@ func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID
 		return uuid.Nil, err
 	}
 
-	if order.Status == model.OrderStatusCanceled || order.Status == model.OrderStatusPaid {
+	if order.Status == model.OrderStatusCanceled ||
+		order.Status == model.OrderStatusPaid ||
+		order.Status == model.OrderStatusCompleted {
 		return uuid.Nil, model.ErrConflict
 	}
 
@@ -41,6 +43,17 @@ func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID
 	order.PaymentMethod = req.PaymentMethod
 
 	if err := s.orderRepository.Update(ctx, order); err != nil {
+		return uuid.Nil, err
+	}
+
+	message := model.OrderPaid{
+		EventUuid:       uuid.NewString(),
+		OrderUuid:       order.OrderUUID.String(),
+		UserUuid:        order.UserUUID.String(),
+		TransactionUuid: transactionUUID.String(),
+	}
+
+	if err := s.orderProducer.ProduceOrderPaid(ctx, message); err != nil {
 		return uuid.Nil, err
 	}
 

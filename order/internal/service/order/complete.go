@@ -6,7 +6,7 @@ import (
 	"github.com/ChopX4/raketka/order/internal/model"
 )
 
-func (s *service) Cancel(ctx context.Context, orderUUID string) error {
+func (s *service) Complete(ctx context.Context, orderUUID string) error {
 	if !model.IsValidUUID(orderUUID) {
 		return model.ErrBadRequest
 	}
@@ -16,13 +16,11 @@ func (s *service) Cancel(ctx context.Context, orderUUID string) error {
 		return err
 	}
 
-	if order.Status == model.OrderStatusCanceled ||
-		order.Status == model.OrderStatusPaid ||
-		order.Status == model.OrderStatusCompleted {
+	if order.Status == model.OrderStatusCanceled || order.Status == model.OrderStatusCompleted || order.Status == model.OrderStatusPendingPayment {
 		return model.ErrConflict
 	}
 
-	order.Status = model.OrderStatusCanceled
+	order.Status = model.OrderStatusCompleted
 
 	if err := s.orderRepository.Update(ctx, order); err != nil {
 		return err

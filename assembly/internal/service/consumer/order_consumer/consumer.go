@@ -3,11 +3,12 @@ package orderconsumer
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	decoder "github.com/ChopX4/raketka/assembly/internal/converter/kafka"
 	src "github.com/ChopX4/raketka/assembly/internal/service"
 	"github.com/ChopX4/raketka/platform/pkg/kafka"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
-	"go.uber.org/zap"
 )
 
 type service struct {

@@ -6,16 +6,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ChopX4/raketka/assembly/internal/config"
+	"go.uber.org/zap"
+
 	"github.com/ChopX4/raketka/assembly/internal/app"
+	"github.com/ChopX4/raketka/assembly/internal/config"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
-	"go.uber.org/zap"
 )
 
-var (
-	configPath = "./deploy/compose/assembly/.env"
-)
+var configPath = "./deploy/compose/assembly/.env"
 
 func main() {
 	if err := config.Load(configPath); err != nil {

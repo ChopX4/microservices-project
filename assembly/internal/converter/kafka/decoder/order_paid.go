@@ -1,9 +1,10 @@
 package decoder
 
 import (
+	"google.golang.org/protobuf/proto"
+
 	"github.com/ChopX4/raketka/assembly/internal/model"
 	events_v1 "github.com/ChopX4/raketka/shared/pkg/proto/events/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 type decoder struct{}

@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/config"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
@@ -33,9 +35,41 @@ func New(ctx context.Context) (*App, error) {
 	return a, nil
 }
 
-// Run запускает HTTP-сервер приложения.
+// Run запускает HTTP-сервер и Kafka consumer приложения.
 func (a *App) Run(ctx context.Context) error {
-	return a.runHTTPServer(ctx)
+	errCh := make(chan error, 2)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		if err := a.diContainer.AssembledConsumer(runCtx).RunAssembledConsumer(runCtx); err != nil {
+			errCh <- fmt.Errorf("assembled consumer crashed: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := a.runHTTPServer(runCtx); err != nil {
+			errCh <- fmt.Errorf("http server crashed: %w", err)
+		}
+	}()
+
+	select {
+	case <-runCtx.Done():
+		return runCtx.Err()
+	case err := <-errCh:
+		logger.Error(runCtx, "component crashed, shutting down", zap.Error(err))
+		cancel()
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(runCtx, requestTimeout)
+		defer shutdownCancel()
+
+		if closeErr := closer.CloseAll(shutdownCtx); closeErr != nil {
+			logger.Error(runCtx, "failed to close app resources", zap.Error(closeErr))
+		}
+
+		return err
+	}
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -95,7 +129,7 @@ func (a *App) runHTTPServer(ctx context.Context) error {
 	logger.Info(ctx, fmt.Sprintf("🚀 HTTP server listening on %s", config.AppConfig().Order.Address()))
 
 	err := a.httpServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 

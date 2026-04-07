@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	"github.com/ChopX4/raketka/assembly/internal/model"
 	"github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error {
