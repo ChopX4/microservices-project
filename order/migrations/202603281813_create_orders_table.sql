@@ -4,7 +4,7 @@ CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'CANCELED');
 
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
-    order_uuid UUID NOT NULL,
+    order_uuid UUID NOT NULL UNIQUE,
     user_uuid UUID NOT NULL,
     part_uuids UUID[] NOT NULL DEFAULT '{}',
     total_price NUMERIC(12, 2) NOT NULL,

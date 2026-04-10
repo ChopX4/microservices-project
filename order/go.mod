@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/ChopX4/raketka/platform v0.0.0-00010101000000-000000000000
 	github.com/ChopX4/raketka/shared v0.0.0-00010101000000-000000000000
+	github.com/IBM/sarama v1.47.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
@@ -18,7 +19,6 @@ require (
 )
 
 require (
-	github.com/IBM/sarama v1.47.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect

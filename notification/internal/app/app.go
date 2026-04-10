@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -28,43 +30,67 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	errCh := make(chan error, 3)
+	errCh := make(chan error, 2)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	var wg sync.WaitGroup
+
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := a.diContainer.OrderConsumer(runCtx).RunOrderConsumer(runCtx); err != nil {
 			errCh <- fmt.Errorf("order consumer crashed: %w", err)
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := a.diContainer.AssembledConsumer(runCtx).RunAssembledConsumer(runCtx); err != nil {
 			errCh <- fmt.Errorf("assembled consumer crashed: %w", err)
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		a.runTelegramBot(runCtx)
 	}()
 
+	var runErr error
+
 	select {
 	case <-runCtx.Done():
-		return runCtx.Err()
+		logger.Info(runCtx, "shutdown signal received")
 	case err := <-errCh:
+		runErr = err
 		logger.Error(runCtx, "component crashed, shutting down", zap.Error(err))
-		cancel()
-
-		shutdownCtx, shutdownCancel := context.WithCancel(runCtx)
-		defer shutdownCancel()
-
-		if closeErr := closer.CloseAll(shutdownCtx); closeErr != nil && !errors.Is(closeErr, context.Canceled) {
-			logger.Error(runCtx, "failed to close app resources", zap.Error(closeErr))
-		}
-
-		return err
 	}
+
+	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(runCtx, 10*time.Second)
+	defer shutdownCancel()
+
+	if closeErr := closer.CloseAll(shutdownCtx); closeErr != nil && !errors.Is(closeErr, context.Canceled) {
+		logger.Error(runCtx, "failed to close app resources", zap.Error(closeErr))
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-shutdownCtx.Done():
+		logger.Error(runCtx, "shutdown timeout exceeded while waiting for components to stop", zap.Error(shutdownCtx.Err()))
+	}
+
+	return runErr
 }
 
 func (a *App) initDeps(ctx context.Context) error {

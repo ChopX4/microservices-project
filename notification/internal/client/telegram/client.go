@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 )
 
 type client struct {
@@ -19,9 +18,8 @@ func NewTelegramClient(bot *bot.Bot) *client {
 
 func (c *client) SendMessage(ctx context.Context, chatId int64, message string) error {
 	_, err := c.bot.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatId,
-		Text:      message,
-		ParseMode: models.ParseModeMarkdown,
+		ChatID: chatId,
+		Text:   message,
 	})
 	if err != nil {
 		return err

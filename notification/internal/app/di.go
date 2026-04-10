@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/go-telegram/bot"
@@ -91,7 +93,14 @@ func (d *diContainer) TelegramClient(ctx context.Context) notificationClient.Tel
 
 func (d *diContainer) TelegramBot(ctx context.Context) *bot.Bot {
 	if d.telegramBot == nil {
-		telegramBot, err := bot.New(config.AppConfig().TelegramConfig.Token())
+		telegramBot, err := bot.New(
+			config.AppConfig().TelegramConfig.Token(),
+			bot.WithCheckInitTimeout(10*time.Second),
+			bot.WithHTTPClient(
+				10*time.Second,
+				&http.Client{Timeout: 10 * time.Second},
+			),
+		)
 		if err != nil {
 			logger.Error(ctx, "failed to create telegram bot", zap.Error(err))
 			panic(fmt.Sprintf("failed to create telegram bot: %v", err))

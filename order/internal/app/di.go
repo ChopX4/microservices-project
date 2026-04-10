@@ -22,9 +22,11 @@ import (
 	migrator "github.com/ChopX4/raketka/order/internal/migrator"
 	"github.com/ChopX4/raketka/order/internal/repository"
 	orderRepository "github.com/ChopX4/raketka/order/internal/repository/order"
+	outboxRepository "github.com/ChopX4/raketka/order/internal/repository/outbox"
 	"github.com/ChopX4/raketka/order/internal/service"
 	assembledconsumer "github.com/ChopX4/raketka/order/internal/service/consumer/assembled_consumer"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
+	outboxsender "github.com/ChopX4/raketka/order/internal/service/outbox"
 	orderproducer "github.com/ChopX4/raketka/order/internal/service/producer/order_producer"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
@@ -41,9 +43,12 @@ type diContainer struct {
 	orderService      service.OrderService
 	orderProducer     service.OrderProducer
 	assembledConsumer service.AssembledConsumer
+	outboxSender      service.OutboxSender
 	shipDecoder       kafkaConverter.ShipAssembledDecoder
 
-	orderRepository repository.OrderRepository
+	orderRepository  repository.OrderRepository
+	outboxRepository repository.OutboxRepository
+	txManager        repository.TxManager
 
 	inventoryClient orderGRPCClients.InventoryClient
 	paymentClient   orderGRPCClients.PaymentClient
@@ -77,9 +82,11 @@ func (d *diContainer) OrderService(ctx context.Context) service.OrderService {
 	if d.orderService == nil {
 		d.orderService = orderService.NewService(
 			d.OrderRepository(ctx),
+			d.OutboxRepository(ctx),
+			d.TxManager(ctx),
 			d.InventoryClient(ctx),
 			d.PaymentClient(ctx),
-			d.OrderProducer(ctx),
+			config.AppConfig().OrderProducer.Topic(),
 		)
 	}
 
@@ -116,6 +123,17 @@ func (d *diContainer) AssembledConsumer(ctx context.Context) service.AssembledCo
 	return d.assembledConsumer
 }
 
+func (d *diContainer) OutboxSender(ctx context.Context) service.OutboxSender {
+	if d.outboxSender == nil {
+		d.outboxSender = outboxsender.NewSender(
+			d.OutboxRepository(ctx),
+			d.SyncProducer(ctx),
+		)
+	}
+
+	return d.outboxSender
+}
+
 func (d *diContainer) ShipDecoder() kafkaConverter.ShipAssembledDecoder {
 	if d.shipDecoder == nil {
 		d.shipDecoder = decoder.NewShipDecoder()
@@ -130,6 +148,22 @@ func (d *diContainer) OrderRepository(ctx context.Context) repository.OrderRepos
 	}
 
 	return d.orderRepository
+}
+
+func (d *diContainer) OutboxRepository(ctx context.Context) repository.OutboxRepository {
+	if d.outboxRepository == nil {
+		d.outboxRepository = outboxRepository.NewOutboxRepository(d.PostgreSQLPool(ctx))
+	}
+
+	return d.outboxRepository
+}
+
+func (d *diContainer) TxManager(ctx context.Context) repository.TxManager {
+	if d.txManager == nil {
+		d.txManager = repository.NewTxManager(d.PostgreSQLPool(ctx))
+	}
+
+	return d.txManager
 }
 
 func (d *diContainer) InventoryClient(ctx context.Context) orderGRPCClients.InventoryClient {

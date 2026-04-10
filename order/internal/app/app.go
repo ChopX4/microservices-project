@@ -37,7 +37,7 @@ func New(ctx context.Context) (*App, error) {
 
 // Run запускает HTTP-сервер и Kafka consumer приложения.
 func (a *App) Run(ctx context.Context) error {
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 3)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -45,6 +45,12 @@ func (a *App) Run(ctx context.Context) error {
 	go func() {
 		if err := a.diContainer.AssembledConsumer(runCtx).RunAssembledConsumer(runCtx); err != nil {
 			errCh <- fmt.Errorf("assembled consumer crashed: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := a.diContainer.OutboxSender(runCtx).Run(runCtx); err != nil && !errors.Is(err, context.Canceled) {
+			errCh <- fmt.Errorf("outbox sender crashed: %w", err)
 		}
 	}()
 

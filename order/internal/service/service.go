@@ -23,3 +23,7 @@ type OrderProducer interface {
 type AssembledConsumer interface {
 	RunAssembledConsumer(ctx context.Context) error
 }
+
+type OutboxSender interface {
+	Run(ctx context.Context) error
+}
