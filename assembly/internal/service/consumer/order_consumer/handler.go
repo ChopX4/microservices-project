@@ -12,6 +12,10 @@ import (
 	"github.com/ChopX4/raketka/platform/pkg/logger"
 )
 
+const buildTimeSec = 10
+
+var after = time.After
+
 func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error {
 	event, err := s.orderDecoder.Decode(msg.Value)
 	if err != nil {
@@ -19,19 +23,18 @@ func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error 
 		return err
 	}
 
-	buildTime := 10
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 
-	case <-time.After(time.Duration(buildTime) * time.Second):
+	case <-after(time.Duration(buildTimeSec) * time.Second):
 	}
 
 	shipEvent := model.ShipAssembled{
 		EventUuid:    uuid.NewString(),
 		OrderUuid:    event.OrderUuid,
 		UserUuid:     event.UserUuid,
-		BuildTimeSec: int64(buildTime),
+		BuildTimeSec: int64(buildTimeSec),
 	}
 
 	if err := s.orderProducer.ProduceShipAssembled(ctx, shipEvent); err != nil {

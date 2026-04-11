@@ -38,13 +38,13 @@ func NewRepository(ctx context.Context, db *mongo.Database) (*repository, error)
 		return nil, fmt.Errorf("failed to create indexes: %w", err)
 	}
 
-	if err := seedParts(ctx, collection); err != nil {
-		return nil, fmt.Errorf("failed to seed parts: %w", err)
-	}
-
 	return &repository{
 		collection: collection,
 	}, nil
+}
+
+func SeedParts(ctx context.Context, db *mongo.Database) error {
+	return seedParts(ctx, db.Collection("parts"))
 }
 
 func seedParts(ctx context.Context, collection *mongo.Collection) error {
