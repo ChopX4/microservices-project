@@ -42,6 +42,15 @@ func (a *App) Run(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	closeResources := func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, requestTimeout)
+		defer shutdownCancel()
+
+		if closeErr := closer.CloseAll(shutdownCtx); closeErr != nil {
+			logger.Error(ctx, "failed to close app resources", zap.Error(closeErr))
+		}
+	}
+
 	go func() {
 		if err := a.diContainer.AssembledConsumer(runCtx).RunAssembledConsumer(runCtx); err != nil {
 			errCh <- fmt.Errorf("assembled consumer crashed: %w", err)
@@ -62,18 +71,12 @@ func (a *App) Run(ctx context.Context) error {
 
 	select {
 	case <-runCtx.Done():
+		closeResources()
 		return runCtx.Err()
 	case err := <-errCh:
 		logger.Error(runCtx, "component crashed, shutting down", zap.Error(err))
 		cancel()
-
-		shutdownCtx, shutdownCancel := context.WithTimeout(runCtx, requestTimeout)
-		defer shutdownCancel()
-
-		if closeErr := closer.CloseAll(shutdownCtx); closeErr != nil {
-			logger.Error(runCtx, "failed to close app resources", zap.Error(closeErr))
-		}
-
+		closeResources()
 		return err
 	}
 }

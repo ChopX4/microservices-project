@@ -16,10 +16,6 @@ type OrderService interface {
 	Complete(ctx context.Context, orderUUID string) error
 }
 
-type OrderProducer interface {
-	ProduceOrderPaid(ctx context.Context, event model.OrderPaid) error
-}
-
 type AssembledConsumer interface {
 	RunAssembledConsumer(ctx context.Context) error
 }

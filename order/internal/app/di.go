@@ -27,10 +27,8 @@ import (
 	assembledconsumer "github.com/ChopX4/raketka/order/internal/service/consumer/assembled_consumer"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
 	outboxsender "github.com/ChopX4/raketka/order/internal/service/outbox"
-	orderproducer "github.com/ChopX4/raketka/order/internal/service/producer/order_producer"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
-	kafkaProducer "github.com/ChopX4/raketka/platform/pkg/kafka/producer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
@@ -41,7 +39,6 @@ type diContainer struct {
 	orderHandler order_v1.Handler
 
 	orderService      service.OrderService
-	orderProducer     service.OrderProducer
 	assembledConsumer service.AssembledConsumer
 	outboxSender      service.OutboxSender
 	shipDecoder       kafkaConverter.ShipAssembledDecoder
@@ -93,20 +90,6 @@ func (d *diContainer) OrderService(ctx context.Context) service.OrderService {
 	return d.orderService
 }
 
-func (d *diContainer) OrderProducer(ctx context.Context) service.OrderProducer {
-	if d.orderProducer == nil {
-		d.orderProducer = orderproducer.NewOrderProducer(
-			kafkaProducer.NewProducer(
-				d.SyncProducer(ctx),
-				config.AppConfig().OrderProducer.Topic(),
-				logger.Logger(),
-			),
-		)
-	}
-
-	return d.orderProducer
-}
-
 func (d *diContainer) AssembledConsumer(ctx context.Context) service.AssembledConsumer {
 	if d.assembledConsumer == nil {
 		d.assembledConsumer = assembledconsumer.NewAssembledConsumer(
@@ -128,6 +111,7 @@ func (d *diContainer) OutboxSender(ctx context.Context) service.OutboxSender {
 		d.outboxSender = outboxsender.NewSender(
 			d.OutboxRepository(ctx),
 			d.SyncProducer(ctx),
+			d.TxManager(ctx),
 		)
 	}
 

@@ -18,8 +18,8 @@ func (r *repository) ListPending(ctx context.Context, limit int) ([]repoModel.Ou
 		WHERE status = 'PENDING'
 		ORDER BY created_at
 		LIMIT $1
+		FOR UPDATE SKIP LOCKED
 	`
-
 	rows, err := repo.GetQueryEngine(ctx, r.db).Query(ctx, sqlQuery, limit)
 	if err != nil {
 		return nil, err
