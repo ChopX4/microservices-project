@@ -1,0 +1,1 @@
+{"level":"INFO","timestamp":"2026-04-09T01:39:27.938+0500","caller":"order_consumer/consumer.go:29","message":"Starting OrderConsumer service"}

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/ChopX4/raketka/inventory/internal/config"
+	inventoryRepository "github.com/ChopX4/raketka/inventory/internal/repository/part"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	grpcHealth "github.com/ChopX4/raketka/platform/pkg/grpc/health"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
@@ -40,8 +41,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
-		a.initLogger,
-		a.initCloser,
+		a.initSeedData,
 		a.initListener,
 		a.initGRPCServer,
 	}
@@ -60,16 +60,8 @@ func (a *App) initDI(_ context.Context) error {
 	return nil
 }
 
-func (a *App) initLogger(_ context.Context) error {
-	return logger.Init(
-		config.AppConfig().Logger.Level(),
-		config.AppConfig().Logger.AsJson(),
-	)
-}
-
-func (a *App) initCloser(_ context.Context) error {
-	closer.SetLogger(logger.Logger())
-	return nil
+func (a *App) initSeedData(ctx context.Context) error {
+	return inventoryRepository.SeedParts(ctx, a.diContainer.MongoDBHandle(ctx))
 }
 
 func (a *App) initListener(_ context.Context) error {

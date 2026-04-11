@@ -1,0 +1,1 @@
+{"level":"INFO","timestamp":"2026-04-09T01:39:27.983+0500","caller":"app/app.go:94","message":"🚀 gRPC PaymentService server listening on localhost:50052"}

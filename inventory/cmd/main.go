@@ -28,6 +28,8 @@ func main() {
 		panic(fmt.Errorf("failed to init logger: %w", err))
 	}
 
+	closer.SetLogger(logger.Logger())
+
 	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer appCancel()
 

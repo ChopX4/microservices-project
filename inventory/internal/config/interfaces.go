@@ -4,7 +4,7 @@ type InventoryConfig interface {
 	Address() string
 }
 
-type loggerConfig interface {
+type LoggerConfig interface {
 	Level() string
 	AsJson() bool
 }

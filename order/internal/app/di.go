@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/IBM/sarama"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
@@ -16,12 +17,18 @@ import (
 	orderInventoryClient "github.com/ChopX4/raketka/order/internal/clients/grpc/inventory"
 	orderPaymentClient "github.com/ChopX4/raketka/order/internal/clients/grpc/payment"
 	"github.com/ChopX4/raketka/order/internal/config"
+	kafkaConverter "github.com/ChopX4/raketka/order/internal/converter/kafka"
+	decoder "github.com/ChopX4/raketka/order/internal/converter/kafka/decoder"
 	migrator "github.com/ChopX4/raketka/order/internal/migrator"
 	"github.com/ChopX4/raketka/order/internal/repository"
 	orderRepository "github.com/ChopX4/raketka/order/internal/repository/order"
+	outboxRepository "github.com/ChopX4/raketka/order/internal/repository/outbox"
 	"github.com/ChopX4/raketka/order/internal/service"
+	assembledconsumer "github.com/ChopX4/raketka/order/internal/service/consumer/assembled_consumer"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
+	outboxsender "github.com/ChopX4/raketka/order/internal/service/outbox"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
+	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
@@ -31,9 +38,14 @@ import (
 type diContainer struct {
 	orderHandler order_v1.Handler
 
-	orderService service.OrderService
+	orderService      service.OrderService
+	assembledConsumer service.AssembledConsumer
+	outboxSender      service.OutboxSender
+	shipDecoder       kafkaConverter.ShipAssembledDecoder
 
-	orderRepository repository.OrderRepository
+	orderRepository  repository.OrderRepository
+	outboxRepository repository.OutboxRepository
+	txManager        repository.TxManager
 
 	inventoryClient orderGRPCClients.InventoryClient
 	paymentClient   orderGRPCClients.PaymentClient
@@ -45,6 +57,8 @@ type diContainer struct {
 	paymentConn   *grpc.ClientConn
 
 	postgreSQLPool *pgxpool.Pool
+	syncProducer   sarama.SyncProducer
+	consumerGroup  sarama.ConsumerGroup
 }
 
 func NewDIContainer() *diContainer {
@@ -65,12 +79,51 @@ func (d *diContainer) OrderService(ctx context.Context) service.OrderService {
 	if d.orderService == nil {
 		d.orderService = orderService.NewService(
 			d.OrderRepository(ctx),
+			d.OutboxRepository(ctx),
+			d.TxManager(ctx),
 			d.InventoryClient(ctx),
 			d.PaymentClient(ctx),
+			config.AppConfig().OrderProducer.Topic(),
 		)
 	}
 
 	return d.orderService
+}
+
+func (d *diContainer) AssembledConsumer(ctx context.Context) service.AssembledConsumer {
+	if d.assembledConsumer == nil {
+		d.assembledConsumer = assembledconsumer.NewAssembledConsumer(
+			kafkaConsumer.NewConsumer(
+				d.ConsumerGroup(ctx),
+				[]string{config.AppConfig().AssembledConsumer.Topic()},
+				logger.Logger(),
+			),
+			d.ShipDecoder(),
+			d.OrderService(ctx),
+		)
+	}
+
+	return d.assembledConsumer
+}
+
+func (d *diContainer) OutboxSender(ctx context.Context) service.OutboxSender {
+	if d.outboxSender == nil {
+		d.outboxSender = outboxsender.NewSender(
+			d.OutboxRepository(ctx),
+			d.SyncProducer(ctx),
+			d.TxManager(ctx),
+		)
+	}
+
+	return d.outboxSender
+}
+
+func (d *diContainer) ShipDecoder() kafkaConverter.ShipAssembledDecoder {
+	if d.shipDecoder == nil {
+		d.shipDecoder = decoder.NewShipDecoder()
+	}
+
+	return d.shipDecoder
 }
 
 func (d *diContainer) OrderRepository(ctx context.Context) repository.OrderRepository {
@@ -79,6 +132,22 @@ func (d *diContainer) OrderRepository(ctx context.Context) repository.OrderRepos
 	}
 
 	return d.orderRepository
+}
+
+func (d *diContainer) OutboxRepository(ctx context.Context) repository.OutboxRepository {
+	if d.outboxRepository == nil {
+		d.outboxRepository = outboxRepository.NewOutboxRepository(d.PostgreSQLPool(ctx))
+	}
+
+	return d.outboxRepository
+}
+
+func (d *diContainer) TxManager(ctx context.Context) repository.TxManager {
+	if d.txManager == nil {
+		d.txManager = repository.NewTxManager(d.PostgreSQLPool(ctx))
+	}
+
+	return d.txManager
 }
 
 func (d *diContainer) InventoryClient(ctx context.Context) orderGRPCClients.InventoryClient {
@@ -205,4 +274,52 @@ func (d *diContainer) PostgreSQLPool(ctx context.Context) *pgxpool.Pool {
 	}
 
 	return d.postgreSQLPool
+}
+
+func (d *diContainer) SyncProducer(ctx context.Context) sarama.SyncProducer {
+	if d.syncProducer == nil {
+		cfg := sarama.NewConfig()
+		cfg.Version = sarama.V3_6_0_0
+		cfg.Producer.Return.Successes = true
+
+		producer, err := sarama.NewSyncProducer(config.AppConfig().Kafka.Brokers(), cfg)
+		if err != nil {
+			logger.Error(ctx, "failed to create kafka sync producer", zap.Error(err))
+			panic(fmt.Sprintf("failed to create kafka sync producer: %v", err))
+		}
+
+		closer.AddNamed("kafka sync producer", func(context.Context) error {
+			return producer.Close()
+		})
+
+		d.syncProducer = producer
+	}
+
+	return d.syncProducer
+}
+
+func (d *diContainer) ConsumerGroup(ctx context.Context) sarama.ConsumerGroup {
+	if d.consumerGroup == nil {
+		cfg := sarama.NewConfig()
+		cfg.Version = sarama.V3_6_0_0
+		cfg.Consumer.Return.Errors = true
+
+		group, err := sarama.NewConsumerGroup(
+			config.AppConfig().Kafka.Brokers(),
+			config.AppConfig().AssembledConsumer.GroupID(),
+			cfg,
+		)
+		if err != nil {
+			logger.Error(ctx, "failed to create kafka consumer group", zap.Error(err))
+			panic(fmt.Sprintf("failed to create kafka consumer group: %v", err))
+		}
+
+		closer.AddNamed("kafka consumer group", func(context.Context) error {
+			return group.Close()
+		})
+
+		d.consumerGroup = group
+	}
+
+	return d.consumerGroup
 }

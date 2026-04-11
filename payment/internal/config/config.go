@@ -11,8 +11,8 @@ import (
 var appConfig *config
 
 type config struct {
-	Payment paymentConfig
-	Logger  loggerConfig
+	Payment PaymentConfig
+	Logger  LoggerConfig
 }
 
 func Load(paths ...string) error {

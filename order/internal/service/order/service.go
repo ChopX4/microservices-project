@@ -6,15 +6,21 @@ import (
 )
 
 type service struct {
-	orderRepository repository.OrderRepository
-	inventoryClient grpc.InventoryClient
-	paymentClient   grpc.PaymentClient
+	orderRepository  repository.OrderRepository
+	outboxRepository repository.OutboxRepository
+	txManager        repository.TxManager
+	inventoryClient  grpc.InventoryClient
+	paymentClient    grpc.PaymentClient
+	orderPaidTopic   string
 }
 
-func NewService(orderRepository repository.OrderRepository, inventoryClient grpc.InventoryClient, paymentClient grpc.PaymentClient) *service {
+func NewService(orderRepository repository.OrderRepository, outboxRepository repository.OutboxRepository, txManager repository.TxManager, inventoryClient grpc.InventoryClient, paymentClient grpc.PaymentClient, orderPaidTopic string) *service {
 	return &service{
-		orderRepository: orderRepository,
-		inventoryClient: inventoryClient,
-		paymentClient:   paymentClient,
+		orderRepository:  orderRepository,
+		outboxRepository: outboxRepository,
+		txManager:        txManager,
+		inventoryClient:  inventoryClient,
+		paymentClient:    paymentClient,
+		orderPaidTopic:   orderPaidTopic,
 	}
 }

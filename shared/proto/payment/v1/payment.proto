@@ -6,6 +6,7 @@ option go_package = "github.com/ChopX4/raketka/pkg/proto/payment/v1;payment_v1";
 
 // Сервис оплаты заказов симулирует работу платёжного шлюза
 service PaymentService {
+    //.
     rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
 }
 

@@ -13,4 +13,13 @@ type OrderService interface {
 	Create(ctx context.Context, order model.OrderRequest) (model.OrderResponse, error)
 	Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error)
 	Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error)
+	Complete(ctx context.Context, orderUUID string) error
+}
+
+type AssembledConsumer interface {
+	RunAssembledConsumer(ctx context.Context) error
+}
+
+type OutboxSender interface {
+	Run(ctx context.Context) error
 }
