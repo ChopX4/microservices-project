@@ -9,6 +9,7 @@ import (
 
 	"github.com/ChopX4/raketka/order/internal/repository"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 const (
@@ -19,10 +20,10 @@ const (
 type sender struct {
 	outboxRepository repository.OutboxRepository
 	producer         sarama.SyncProducer
-	txManager        repository.TxManager
+	txManager        pgxtx.TxManager
 }
 
-func NewSender(outboxRepository repository.OutboxRepository, producer sarama.SyncProducer, txManager repository.TxManager) *sender {
+func NewSender(outboxRepository repository.OutboxRepository, producer sarama.SyncProducer, txManager pgxtx.TxManager) *sender {
 	return &sender{
 		outboxRepository: outboxRepository,
 		producer:         producer,

@@ -1,5 +1,0 @@
-{"level":"INFO","timestamp":"2026-04-09T01:39:28.289+0500","caller":"app/app.go:109","message":"telegram bot started"}
-{"level":"INFO","timestamp":"2026-04-09T01:39:28.297+0500","caller":"assembled_consumer/consumer.go:29","message":"Starting AssembledConsumer service"}
-{"level":"INFO","timestamp":"2026-04-09T01:39:28.297+0500","caller":"order_consumer/consumer.go:29","message":"Starting OrderConsumer service"}
-2026/04/09 01:39:31 [TGBOT] [ERROR] error get updates, conflict, Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
-2026/04/09 01:39:35 [TGBOT] [ERROR] error get updates, conflict, Conflict: terminated by other getUpdates request; make sure that only one bot instance is running

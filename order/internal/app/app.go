@@ -119,6 +119,7 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(requestTimeout))
+	router.Use(a.diContainer.AuthMiddleware(ctx).Handle)
 	router.Mount("/", orderServer)
 
 	a.httpServer = &http.Server{

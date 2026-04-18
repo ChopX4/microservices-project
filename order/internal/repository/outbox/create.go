@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
-	repo "github.com/ChopX4/raketka/order/internal/repository"
 	repoModel "github.com/ChopX4/raketka/order/internal/repository/model"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 func (r *repository) Create(ctx context.Context, msg repoModel.OutboxMessage) error {
@@ -22,7 +22,7 @@ func (r *repository) Create(ctx context.Context, msg repoModel.OutboxMessage) er
 	) VALUES ($1, $2, $3, $4)
 	`
 
-	_, err := repo.GetQueryEngine(ctx, r.db).Exec(
+	_, err := pgxtx.GetQueryEngine(ctx, r.db).Exec(
 		ctx,
 		sqlQuery,
 		msg.EventUUID,

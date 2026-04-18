@@ -11,6 +11,7 @@ import (
 var appConfig *config
 
 type config struct {
+	Iam               IamClientConfig
 	Inventory         InventoryClientConfig
 	Payment           PaymentClientConfig
 	Order             OrderConfig
@@ -23,6 +24,11 @@ type config struct {
 
 func Load(paths ...string) error {
 	if err := godotenv.Load(paths...); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	iamCfg, err := envs.NewIamClientConfig()
+	if err != nil {
 		return err
 	}
 
@@ -67,6 +73,7 @@ func Load(paths ...string) error {
 	}
 
 	appConfig = &config{
+		Iam:               iamCfg,
 		Inventory:         inventoryCfg,
 		Payment:           paymentCfg,
 		Order:             orderCfg,

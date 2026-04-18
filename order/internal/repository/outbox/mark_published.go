@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ChopX4/raketka/order/internal/model"
-	repo "github.com/ChopX4/raketka/order/internal/repository"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 func (r *repository) MarkPublished(ctx context.Context, eventUUID string) error {
@@ -14,7 +14,7 @@ func (r *repository) MarkPublished(ctx context.Context, eventUUID string) error 
 		WHERE event_uuid = $1
 	`
 
-	tag, err := repo.GetQueryEngine(ctx, r.db).Exec(ctx, sqlQuery, eventUUID)
+	tag, err := pgxtx.GetQueryEngine(ctx, r.db).Exec(ctx, sqlQuery, eventUUID)
 	if err != nil {
 		return err
 	}
