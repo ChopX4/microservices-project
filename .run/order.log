@@ -1,3 +1,0 @@
-2026/04/09 01:39:28 goose: no migrations to run. current version: 202604071200
-{"level":"INFO","timestamp":"2026-04-09T01:39:28.045+0500","caller":"app/app.go:129","message":"🚀 HTTP server listening on localhost:8080"}
-{"level":"INFO","timestamp":"2026-04-09T01:39:28.049+0500","caller":"assembled_consumer/consumer.go:29","message":"Starting AssembledConsumer service"}

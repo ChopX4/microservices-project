@@ -28,6 +28,7 @@ const (
 //
 // Сервис оплаты заказов симулирует работу платёжного шлюза
 type PaymentServiceClient interface {
+	//.
 	PayOrder(ctx context.Context, in *PayOrderRequest, opts ...grpc.CallOption) (*PayOrderResponse, error)
 }
 
@@ -55,6 +56,7 @@ func (c *paymentServiceClient) PayOrder(ctx context.Context, in *PayOrderRequest
 //
 // Сервис оплаты заказов симулирует работу платёжного шлюза
 type PaymentServiceServer interface {
+	//.
 	PayOrder(context.Context, *PayOrderRequest) (*PayOrderResponse, error)
 	mustEmbedUnimplementedPaymentServiceServer()
 }

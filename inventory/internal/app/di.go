@@ -8,6 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	inventoryAPI "github.com/ChopX4/raketka/inventory/internal/api/inventory/v1"
 	"github.com/ChopX4/raketka/inventory/internal/config"
@@ -17,6 +19,8 @@ import (
 	inventoryService "github.com/ChopX4/raketka/inventory/internal/service/part"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	grpcAuth "github.com/ChopX4/raketka/platform/pkg/middleware/grpc"
+	auth_v1 "github.com/ChopX4/raketka/shared/pkg/proto/auth/v1"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 )
 
@@ -24,8 +28,12 @@ type diContainer struct {
 	inventoryV1API inventory_v1.InventoryServiceServer
 
 	inventoryService service.InventoryService
+	authInterceptor  *grpcAuth.AuthInterceptor
 
 	inventoryRepository repository.InventoryRepository
+
+	generatedIAMClient auth_v1.AuthServiceClient
+	iamConn            *grpc.ClientConn
 
 	mongoDBClient *mongo.Client
 	mongoDBHandle *mongo.Database
@@ -49,6 +57,43 @@ func (d *diContainer) InventoryService(ctx context.Context) service.InventorySer
 	}
 
 	return d.inventoryService
+}
+
+func (d *diContainer) AuthInterceptor(ctx context.Context) *grpcAuth.AuthInterceptor {
+	if d.authInterceptor == nil {
+		d.authInterceptor = grpcAuth.NewAuthInterceptor(d.GeneratedIAMClient(ctx))
+	}
+
+	return d.authInterceptor
+}
+
+func (d *diContainer) GeneratedIAMClient(ctx context.Context) auth_v1.AuthServiceClient {
+	if d.generatedIAMClient == nil {
+		d.generatedIAMClient = auth_v1.NewAuthServiceClient(d.IAMConn(ctx))
+	}
+
+	return d.generatedIAMClient
+}
+
+func (d *diContainer) IAMConn(ctx context.Context) *grpc.ClientConn {
+	if d.iamConn == nil {
+		conn, err := grpc.NewClient(
+			config.AppConfig().Iam.Address(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			logger.Error(ctx, "failed to create iam grpc connection", zap.Error(err))
+			panic(fmt.Sprintf("failed to connect to iam grpc: %v", err))
+		}
+
+		closer.AddNamed("iam gRPC connection", func(context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamConn = conn
+	}
+
+	return d.iamConn
 }
 
 // InventoryRepository создает MongoDB-репозиторий с подготовленными индексами.

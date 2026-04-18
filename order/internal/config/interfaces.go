@@ -6,6 +6,10 @@ type InventoryClientConfig interface {
 	Address() string
 }
 
+type IamClientConfig interface {
+	Address() string
+}
+
 type PaymentClientConfig interface {
 	Address() string
 }

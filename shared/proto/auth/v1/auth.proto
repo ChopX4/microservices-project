@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/ChopX4/raketka/pkg/proto/auth/v1;auth_v1";
+
+// AuthService manages user registration, login and profile lookups.
+service AuthService {
+    // Register creates a new user account.
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    // Login authenticates a user and returns a session identifier.
+    rpc Login(LoginRequest) returns (LoginResponse);
+    // Whoami returns user info for the current session.
+    rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+    // GetUser returns user info by user identifier.
+    rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+// NotificationMethod describes a notification channel for a user.
+message NotificationMethod {
+    string provider_name = 1;
+    string target = 2;
+}
+
+// User contains public profile data.
+message User {
+    string user_uuid = 1;
+    string login = 2;
+    string email = 3;
+    repeated NotificationMethod notification_methods = 4;
+}
+
+// RegisterRequest contains data required to create a new user.
+message RegisterRequest {
+    string login = 1;
+    string password = 2;
+    string email = 3;
+    repeated NotificationMethod notification_methods = 4;
+}
+
+// RegisterResponse contains the created user identifier.
+message RegisterResponse {
+    string user_uuid = 1;
+}
+
+// LoginRequest contains user credentials.
+message LoginRequest {
+    string login = 1;
+    string password = 2;
+}
+
+// LoginResponse contains the created session identifier.
+message LoginResponse {
+    string session_uuid = 1;
+}
+
+// WhoamiRequest identifies the current user by session.
+message WhoamiRequest {
+    string session_uuid = 1;
+}
+
+// WhoamiResponse contains the current user profile.
+message WhoamiResponse {
+    User user = 1;
+}
+
+// GetUserRequest requests a user profile by user identifier.
+message GetUserRequest {
+    string user_uuid = 1;
+}
+
+// GetUserResponse contains user profile data.
+message GetUserResponse {
+    User user = 1;
+}

@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
-	repo "github.com/ChopX4/raketka/order/internal/repository"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error {
@@ -29,7 +29,7 @@ func (r *repository) Create(ctx context.Context, order model.OrderByUUID) error 
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err := repo.GetQueryEngine(ctx, r.db).Exec(
+	_, err := pgxtx.GetQueryEngine(ctx, r.db).Exec(
 		ctx,
 		sqlQuery,
 		repoOrder.OrderUUID,

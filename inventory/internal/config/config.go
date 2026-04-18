@@ -11,6 +11,7 @@ import (
 var appConfig *config
 
 type config struct {
+	Iam       IamClientConfig
 	Inventory InventoryConfig
 	Logger    LoggerConfig
 	Mongo     MongoConfig
@@ -18,6 +19,11 @@ type config struct {
 
 func Load(path ...string) error {
 	if err := godotenv.Load(path...); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	iamCfg, err := envs.NewIAMClientConfig()
+	if err != nil {
 		return err
 	}
 
@@ -37,6 +43,7 @@ func Load(path ...string) error {
 	}
 
 	appConfig = &config{
+		Iam:       iamCfg,
 		Inventory: inventoryCfg,
 		Logger:    loggerCfg,
 		Mongo:     mongoCfg,

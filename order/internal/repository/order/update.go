@@ -6,9 +6,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
-	repo "github.com/ChopX4/raketka/order/internal/repository"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 func (r *repository) Update(ctx context.Context, order model.OrderByUUID) error {
@@ -25,7 +25,7 @@ func (r *repository) Update(ctx context.Context, order model.OrderByUUID) error 
 		WHERE order_uuid = $1
 	`
 
-	tag, err := repo.GetQueryEngine(ctx, r.db).Exec(
+	tag, err := pgxtx.GetQueryEngine(ctx, r.db).Exec(
 		ctx,
 		sqlQuery,
 		repoOrder.OrderUUID,

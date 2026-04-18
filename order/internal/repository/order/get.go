@@ -9,10 +9,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/order/internal/model"
-	repo "github.com/ChopX4/raketka/order/internal/repository"
 	"github.com/ChopX4/raketka/order/internal/repository/converter"
 	repoModel "github.com/ChopX4/raketka/order/internal/repository/model"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 )
 
 func (r *repository) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {
@@ -23,7 +23,7 @@ func (r *repository) Get(ctx context.Context, orderUUID string) (model.OrderByUU
 	dbQuery := "SELECT order_uuid, user_uuid, part_uuids, total_price, transaction_uuid, payment_method, status FROM orders WHERE order_uuid = $1"
 	var order repoModel.OrderByUUID
 
-	if err := repo.GetQueryEngine(ctx, r.db).QueryRow(ctx, dbQuery, orderUUID).Scan(
+	if err := pgxtx.GetQueryEngine(ctx, r.db).QueryRow(ctx, dbQuery, orderUUID).Scan(
 		&order.OrderUUID,
 		&order.UserUUID,
 		&order.PartUuids,

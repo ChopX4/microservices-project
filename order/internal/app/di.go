@@ -30,13 +30,17 @@ import (
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	httpAuth "github.com/ChopX4/raketka/platform/pkg/middleware/http"
+	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
+	auth_v1 "github.com/ChopX4/raketka/shared/pkg/proto/auth/v1"
 	inventory_v1 "github.com/ChopX4/raketka/shared/pkg/proto/inventory/v1"
 	payment_v1 "github.com/ChopX4/raketka/shared/pkg/proto/payment/v1"
 )
 
 type diContainer struct {
-	orderHandler order_v1.Handler
+	orderHandler   order_v1.Handler
+	authMiddleware *httpAuth.AuthMiddleware
 
 	orderService      service.OrderService
 	assembledConsumer service.AssembledConsumer
@@ -45,14 +49,16 @@ type diContainer struct {
 
 	orderRepository  repository.OrderRepository
 	outboxRepository repository.OutboxRepository
-	txManager        repository.TxManager
+	txManager        pgxtx.TxManager
 
 	inventoryClient orderGRPCClients.InventoryClient
 	paymentClient   orderGRPCClients.PaymentClient
 
+	generatedIAMClient       auth_v1.AuthServiceClient
 	generatedInventoryClient inventory_v1.InventoryServiceClient
 	generatedPaymentClient   payment_v1.PaymentServiceClient
 
+	iamConn       *grpc.ClientConn
 	inventoryConn *grpc.ClientConn
 	paymentConn   *grpc.ClientConn
 
@@ -72,6 +78,14 @@ func (d *diContainer) OrderHandler(ctx context.Context) order_v1.Handler {
 	}
 
 	return d.orderHandler
+}
+
+func (d *diContainer) AuthMiddleware(ctx context.Context) *httpAuth.AuthMiddleware {
+	if d.authMiddleware == nil {
+		d.authMiddleware = httpAuth.NewAuthMiddleware(d.GeneratedIAMClient(ctx))
+	}
+
+	return d.authMiddleware
 }
 
 // OrderService связывает бизнес-логику с репозиторием и внешними gRPC-клиентами.
@@ -142,9 +156,9 @@ func (d *diContainer) OutboxRepository(ctx context.Context) repository.OutboxRep
 	return d.outboxRepository
 }
 
-func (d *diContainer) TxManager(ctx context.Context) repository.TxManager {
+func (d *diContainer) TxManager(ctx context.Context) pgxtx.TxManager {
 	if d.txManager == nil {
-		d.txManager = repository.NewTxManager(d.PostgreSQLPool(ctx))
+		d.txManager = pgxtx.NewTxManager(d.PostgreSQLPool(ctx))
 	}
 
 	return d.txManager
@@ -167,6 +181,15 @@ func (d *diContainer) PaymentClient(ctx context.Context) orderGRPCClients.Paymen
 }
 
 // GeneratedInventoryClient создает сгенерированный gRPC-клиент поверх общего соединения.
+func (d *diContainer) GeneratedIAMClient(ctx context.Context) auth_v1.AuthServiceClient {
+	if d.generatedIAMClient == nil {
+		d.generatedIAMClient = auth_v1.NewAuthServiceClient(d.IAMConn(ctx))
+	}
+
+	return d.generatedIAMClient
+}
+
+// GeneratedInventoryClient создает сгенерированный gRPC-клиент поверх общего соединения.
 func (d *diContainer) GeneratedInventoryClient(ctx context.Context) inventory_v1.InventoryServiceClient {
 	if d.generatedInventoryClient == nil {
 		d.generatedInventoryClient = inventory_v1.NewInventoryServiceClient(d.InventoryConn(ctx))
@@ -182,6 +205,27 @@ func (d *diContainer) GeneratedPaymentClient(ctx context.Context) payment_v1.Pay
 	}
 
 	return d.generatedPaymentClient
+}
+
+func (d *diContainer) IAMConn(ctx context.Context) *grpc.ClientConn {
+	if d.iamConn == nil {
+		conn, err := grpc.NewClient(
+			config.AppConfig().Iam.Address(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			logger.Error(ctx, "failed to create iam grpc connection", zap.Error(err))
+			panic(fmt.Sprintf("failed to connect to iam grpc: %v", err))
+		}
+
+		closer.AddNamed("iam gRPC connection", func(context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamConn = conn
+	}
+
+	return d.iamConn
 }
 
 func (d *diContainer) InventoryConn(ctx context.Context) *grpc.ClientConn {
