@@ -7,6 +7,10 @@ import (
 )
 
 func (s *service) GetUser(ctx context.Context, userUUID string) (model.GetUserResponse, error) {
+	if err := s.validateGetUserRequest(userUUID); err != nil {
+		return model.GetUserResponse{}, err
+	}
+
 	user, err := s.userRepository.Get(ctx, userUUID)
 	if err != nil {
 		return model.GetUserResponse{}, err

@@ -7,6 +7,10 @@ import (
 )
 
 func (s *service) Whoami(ctx context.Context, sessionUUID string) (model.WhoamiResponse, error) {
+	if err := s.validateWhoamiRequest(sessionUUID); err != nil {
+		return model.WhoamiResponse{}, err
+	}
+
 	userUUID, err := s.sessionRepository.GetUserUUID(ctx, sessionUUID)
 	if err != nil {
 		return model.WhoamiResponse{}, err

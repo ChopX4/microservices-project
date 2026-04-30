@@ -12,12 +12,8 @@ import (
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID, error) {
-	if !model.IsValidUUID(req.OrderUuid) {
-		return uuid.Nil, model.ErrBadRequest
-	}
-
-	if !req.PaymentMethod.IsValid() {
-		return uuid.Nil, model.ErrBadRequest
+	if err := s.validatePayOrderRequest(req); err != nil {
+		return uuid.Nil, err
 	}
 
 	order, err := s.orderRepository.Get(ctx, req.OrderUuid)
@@ -27,10 +23,8 @@ func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID
 
 	req.UserUuid = order.UserUUID.String()
 
-	if order.Status == model.OrderStatusCanceled ||
-		order.Status == model.OrderStatusPaid ||
-		order.Status == model.OrderStatusCompleted {
-		return uuid.Nil, model.ErrConflict
+	if err := s.validateOrderStatusForPay(order.Status); err != nil {
+		return uuid.Nil, err
 	}
 
 	stringTransactionUUID, err := s.paymentClient.Pay(ctx, req)

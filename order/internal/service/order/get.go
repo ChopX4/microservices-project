@@ -7,8 +7,8 @@ import (
 )
 
 func (s *service) Get(ctx context.Context, orderUUID string) (model.OrderByUUID, error) {
-	if !model.IsValidUUID(orderUUID) {
-		return model.OrderByUUID{}, model.ErrBadRequest
+	if err := s.validateOrderUUID(orderUUID); err != nil {
+		return model.OrderByUUID{}, err
 	}
 
 	order, err := s.orderRepository.Get(ctx, orderUUID)

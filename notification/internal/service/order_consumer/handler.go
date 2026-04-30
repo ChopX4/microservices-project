@@ -16,6 +16,11 @@ func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error 
 		return err
 	}
 
+	if err := s.validateOrderPaidEvent(event); err != nil {
+		logger.Error(ctx, "OrderPaid event validation failed", zap.Error(err))
+		return err
+	}
+
 	if err := s.telegramService.SendOrderNotification(ctx, event); err != nil {
 		logger.Error(ctx, "Failed to send Order notification", zap.Error(err))
 		return err

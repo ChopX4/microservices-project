@@ -16,6 +16,7 @@ require (
 	github.com/ChopX4/raketka/shared v0.0.0-00010101000000-000000000000
 	github.com/IBM/sarama v1.47.0
 	github.com/go-telegram/bot v1.20.0
+	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.27.1
 	google.golang.org/protobuf v1.36.11
 )

@@ -18,7 +18,7 @@ func TestList(t *testing.T) {
 	)
 
 	partEngine := model.Part{
-		UUID:         "uuid-1",
+		UUID:         "550e8400-e29b-41d4-a716-446655440001",
 		Name:         "V12-Turbo",
 		Category:     model.CategoryEngine,
 		Manufacturer: model.Manufacturer{Country: "Germany", Name: "BMW"},
@@ -28,7 +28,7 @@ func TestList(t *testing.T) {
 
 	// Деталь 2: Крыло из Японии
 	partWing := model.Part{
-		UUID:         "uuid-2",
+		UUID:         "550e8400-e29b-41d4-a716-446655440002",
 		Name:         "Carbon-Wing",
 		Category:     model.CategoryWing,
 		Manufacturer: model.Manufacturer{Country: "Japan", Name: "Mitsubishi"},
@@ -38,7 +38,7 @@ func TestList(t *testing.T) {
 
 	// Деталь 3: Топливный насос из Японии
 	partFuel := model.Part{
-		UUID:         "uuid-3",
+		UUID:         "550e8400-e29b-41d4-a716-446655440003",
 		Name:         "Fuel-Pump-X",
 		Category:     model.CategoryFuel,
 		Manufacturer: model.Manufacturer{Country: "Japan", Name: "Denso"},
@@ -55,7 +55,7 @@ func TestList(t *testing.T) {
 		{
 			name: "Поиск по UUID (точное совпадение)",
 			filter: model.PartsFilter{
-				UUIDS: []string{"uuid-1", "uuid-3"},
+				UUIDS: []string{"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440003"},
 			},
 			prepareMock: func(ir *mocks.InventoryRepository, f model.PartsFilter) {
 				ir.On("List", context.Background(), f).Return([]model.Part{partEngine, partFuel}, nil)

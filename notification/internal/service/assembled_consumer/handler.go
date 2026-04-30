@@ -16,6 +16,11 @@ func (s *service) AssembledHandler(ctx context.Context, msg consumer.Message) er
 		return err
 	}
 
+	if err := s.validateShipAssembledEvent(event); err != nil {
+		logger.Error(ctx, "ShipAssembled event validation failed", zap.Error(err))
+		return err
+	}
+
 	if err := s.telegramService.SendShipNotification(ctx, event); err != nil {
 		logger.Error(ctx, "Failed to send Ship notification", zap.Error(err))
 		return err

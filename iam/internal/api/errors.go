@@ -15,6 +15,8 @@ func mapError(err error) error {
 		return nil
 	case errors.Is(err, model.ErrInvalidCredentials):
 		return status.Error(codes.Unauthenticated, err.Error())
+	case errors.Is(err, model.ErrBadRequest):
+		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, model.ErrSessionNotFound):
 		return status.Error(codes.Unauthenticated, err.Error())
 	case errors.Is(err, model.ErrUserNotFound):

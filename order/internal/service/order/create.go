@@ -9,27 +9,9 @@ import (
 )
 
 func (s *service) Create(ctx context.Context, order model.OrderRequest) (model.OrderResponse, error) {
-	if order.UserUUID == uuid.Nil {
-		return model.OrderResponse{}, model.ErrBadRequest
-	}
-
-	if len(order.PartUUIDs) == 0 {
-		return model.OrderResponse{}, model.ErrBadRequest
-	}
-
-	seen := make(map[uuid.UUID]struct{}, len(order.PartUUIDs))
-	uuids := make([]string, 0, len(order.PartUUIDs))
-	for _, v := range order.PartUUIDs {
-		if v == uuid.Nil {
-			return model.OrderResponse{}, model.ErrBadRequest
-		}
-
-		if _, ok := seen[v]; ok {
-			return model.OrderResponse{}, model.ErrBadRequest
-		}
-		seen[v] = struct{}{}
-
-		uuids = append(uuids, v.String())
+	uuids, err := s.validateCreateOrderRequest(order)
+	if err != nil {
+		return model.OrderResponse{}, err
 	}
 
 	parts, err := s.inventoryClient.ListParts(ctx, model.PartsFilter{UUIDS: uuids})

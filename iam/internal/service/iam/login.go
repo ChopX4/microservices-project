@@ -13,6 +13,10 @@ import (
 )
 
 func (s *service) Login(ctx context.Context, login, password string) (string, error) {
+	if err := s.validateLoginRequest(login, password); err != nil {
+		return "", err
+	}
+
 	user, err := s.userRepository.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {

@@ -12,6 +12,10 @@ import (
 )
 
 func (s *service) Register(ctx context.Context, req model.RegisterRequest) (string, error) {
+	if err := s.validateRegisterRequest(req); err != nil {
+		return "", err
+	}
+
 	userUUID := uuid.New()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {

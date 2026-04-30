@@ -16,6 +16,11 @@ func (s *service) AssembledHandler(ctx context.Context, msg consumer.Message) er
 		return err
 	}
 
+	if err := s.validateShipAssembledEvent(message); err != nil {
+		logger.Error(ctx, "ShipAssembled event validation failed", zap.Error(err))
+		return err
+	}
+
 	if err := s.orderService.Complete(ctx, message.OrderUuid); err != nil {
 		logger.Error(ctx, "Failed to complete order", zap.Error(err))
 		return err

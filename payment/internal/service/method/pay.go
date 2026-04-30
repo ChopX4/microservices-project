@@ -10,8 +10,8 @@ import (
 )
 
 func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (string, error) {
-	if !model.IsValidUUID(req.OrderUuid) || !model.IsValidUUID(req.UserUuid) || !req.PaymentMethod.IsValid() {
-		return "", model.ErrBadRequest
+	if err := s.validatePayRequest(req); err != nil {
+		return "", err
 	}
 
 	transactionUUID := uuid.New()
