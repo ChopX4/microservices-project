@@ -28,6 +28,7 @@
 node_modules
 /shared/api/bundles/
 /coverage/
+/logs/
+/.pids/
 
 .codex
-

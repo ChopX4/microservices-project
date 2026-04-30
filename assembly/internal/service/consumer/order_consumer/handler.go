@@ -17,6 +17,8 @@ const buildTimeSec = 10
 var after = time.After
 
 func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error {
+	startAt := time.Now()
+
 	event, err := s.orderDecoder.Decode(msg.Value)
 	if err != nil {
 		logger.Error(ctx, "Failed to decode OrderPaid", zap.Error(err))
@@ -41,6 +43,8 @@ func (s *service) OrderHandler(ctx context.Context, msg consumer.Message) error 
 		logger.Error(ctx, "Failed to produce ShipAssembled", zap.Error(err))
 		return err
 	}
+
+	s.recordAssemblyDuration(ctx, time.Since(startAt).Seconds())
 
 	return nil
 }

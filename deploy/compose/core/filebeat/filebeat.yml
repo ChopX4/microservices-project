@@ -1,0 +1,21 @@
+filebeat.inputs:
+  - type: filestream
+    id: raketka-local-services
+    enabled: true
+    paths:
+      - /var/log/raketka/*.log
+
+processors:
+  - dissect:
+      tokenizer: "/var/log/raketka/%{[service][name]}.log"
+      field: "log.file.path"
+      target_prefix: ""
+  - add_fields:
+      target: service
+      fields:
+        source: local-file
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info

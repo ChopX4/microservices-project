@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	"github.com/ChopX4/raketka/assembly/internal/config"
@@ -12,17 +13,20 @@ import (
 	decoder "github.com/ChopX4/raketka/assembly/internal/converter/kafka/decoder"
 	"github.com/ChopX4/raketka/assembly/internal/service"
 	orderconsumer "github.com/ChopX4/raketka/assembly/internal/service/consumer/order_consumer"
+	orderconsumermetrics "github.com/ChopX4/raketka/assembly/internal/service/consumer/order_consumer/metrics"
 	orderproducer "github.com/ChopX4/raketka/assembly/internal/service/producer/order_producer"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
 	kafkaProducer "github.com/ChopX4/raketka/platform/pkg/kafka/producer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	platformMetrics "github.com/ChopX4/raketka/platform/pkg/metrics"
 )
 
 type diContainer struct {
-	orderConsumer service.OrderConsumer
-	orderProducer service.ShipProducer
-	orderDecoder  kafkaConverter.OrderPaidDecoder
+	orderConsumer   service.OrderConsumer
+	orderProducer   service.ShipProducer
+	orderDecoder    kafkaConverter.OrderPaidDecoder
+	consumerMetrics *orderconsumermetrics.Metrics
 
 	syncProducer  sarama.SyncProducer
 	consumerGroup sarama.ConsumerGroup
@@ -30,6 +34,21 @@ type diContainer struct {
 
 func NewDIContainer() *diContainer {
 	return &diContainer{}
+}
+
+func (d *diContainer) InitMetrics(ctx context.Context) error {
+	if err := platformMetrics.InitProvider(
+		ctx,
+		config.AppConfig().Metrics.CollectorEndpoint(),
+		config.AppConfig().Metrics.CollectorInterval(),
+		"assembly",
+	); err != nil {
+		return err
+	}
+
+	closer.AddNamed("otel meter provider", platformMetrics.Shutdown)
+
+	return nil
 }
 
 func (d *diContainer) OrderConsumer(ctx context.Context) service.OrderConsumer {
@@ -42,10 +61,25 @@ func (d *diContainer) OrderConsumer(ctx context.Context) service.OrderConsumer {
 			),
 			d.OrderDecoder(),
 			d.OrderProducer(ctx),
+			d.OrderConsumerMetrics(ctx),
 		)
 	}
 
 	return d.orderConsumer
+}
+
+func (d *diContainer) OrderConsumerMetrics(ctx context.Context) *orderconsumermetrics.Metrics {
+	if d.consumerMetrics == nil {
+		m, err := orderconsumermetrics.New(ctx, otel.Meter("assembly.service"))
+		if err != nil {
+			logger.Error(ctx, "failed to create assembly metrics", zap.Error(err))
+			panic(fmt.Sprintf("failed to create assembly metrics: %v", err))
+		}
+
+		d.consumerMetrics = m
+	}
+
+	return d.consumerMetrics
 }
 
 func (d *diContainer) OrderProducer(ctx context.Context) service.ShipProducer {

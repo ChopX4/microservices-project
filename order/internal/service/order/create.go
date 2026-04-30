@@ -58,6 +58,7 @@ func (s *service) Create(ctx context.Context, order model.OrderRequest) (model.O
 	if err := s.orderRepository.Create(ctx, repoOrder); err != nil {
 		return model.OrderResponse{}, err
 	}
+	s.addOrdersTotal(ctx, 1)
 
 	return model.OrderResponse{
 		OrderUUID:  orderUUID,

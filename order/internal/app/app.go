@@ -84,6 +84,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
+		a.initMetrics,
 		a.initMigrations,
 		a.initHTTPServer,
 	}
@@ -100,6 +101,10 @@ func (a *App) initDeps(ctx context.Context) error {
 func (a *App) initDI(_ context.Context) error {
 	a.diContainer = NewDIContainer()
 	return nil
+}
+
+func (a *App) initMetrics(ctx context.Context) error {
+	return a.diContainer.InitMetrics(ctx)
 }
 
 // initMigrations применяет миграции до создания рабочего runtime pool и старта HTTP-сервера.

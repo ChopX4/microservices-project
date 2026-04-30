@@ -76,6 +76,7 @@ func (s *service) Pay(ctx context.Context, req model.PayOrderRequest) (uuid.UUID
 	}); err != nil {
 		return uuid.Nil, err
 	}
+	s.addOrdersRevenue(ctx, float64(order.TotalPrice))
 
 	return transactionUUID, nil
 }

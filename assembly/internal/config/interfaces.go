@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type KafkaConfig interface {
 	Brokers() []string
 }
@@ -16,4 +18,9 @@ type OrderAssembledProducerConfig interface {
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
+}
+
+type MetricsConfig interface {
+	CollectorEndpoint() string
+	CollectorInterval() time.Duration
 }

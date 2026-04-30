@@ -25,6 +25,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
+		a.initMetrics,
 	}
 
 	for _, f := range inits {
@@ -39,4 +40,8 @@ func (a *App) initDeps(ctx context.Context) error {
 func (a *App) initDI(_ context.Context) error {
 	a.diContainer = NewDIContainer()
 	return nil
+}
+
+func (a *App) initMetrics(ctx context.Context) error {
+	return a.diContainer.InitMetrics(ctx)
 }

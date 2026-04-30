@@ -8,6 +8,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,10 +27,12 @@ import (
 	"github.com/ChopX4/raketka/order/internal/service"
 	assembledconsumer "github.com/ChopX4/raketka/order/internal/service/consumer/assembled_consumer"
 	orderService "github.com/ChopX4/raketka/order/internal/service/order"
+	orderMetrics "github.com/ChopX4/raketka/order/internal/service/order/metrics"
 	outboxsender "github.com/ChopX4/raketka/order/internal/service/outbox"
 	"github.com/ChopX4/raketka/platform/pkg/closer"
 	kafkaConsumer "github.com/ChopX4/raketka/platform/pkg/kafka/consumer"
 	"github.com/ChopX4/raketka/platform/pkg/logger"
+	platformMetrics "github.com/ChopX4/raketka/platform/pkg/metrics"
 	httpAuth "github.com/ChopX4/raketka/platform/pkg/middleware/http"
 	"github.com/ChopX4/raketka/platform/pkg/pgxtx"
 	order_v1 "github.com/ChopX4/raketka/shared/pkg/openapi/order/v1"
@@ -46,6 +49,7 @@ type diContainer struct {
 	assembledConsumer service.AssembledConsumer
 	outboxSender      service.OutboxSender
 	shipDecoder       kafkaConverter.ShipAssembledDecoder
+	orderMetrics      *orderMetrics.Metrics
 
 	orderRepository  repository.OrderRepository
 	outboxRepository repository.OutboxRepository
@@ -69,6 +73,21 @@ type diContainer struct {
 
 func NewDIContainer() *diContainer {
 	return &diContainer{}
+}
+
+func (d *diContainer) InitMetrics(ctx context.Context) error {
+	if err := platformMetrics.InitProvider(
+		ctx,
+		config.AppConfig().Metrics.CollectorEndpoint(),
+		config.AppConfig().Metrics.CollectorInterval(),
+		"order",
+	); err != nil {
+		return err
+	}
+
+	closer.AddNamed("otel meter provider", platformMetrics.Shutdown)
+
+	return nil
 }
 
 // OrderHandler лениво собирает HTTP/OpenAPI handler поверх сервисного слоя.
@@ -98,6 +117,7 @@ func (d *diContainer) OrderService(ctx context.Context) service.OrderService {
 			d.InventoryClient(ctx),
 			d.PaymentClient(ctx),
 			config.AppConfig().OrderProducer.Topic(),
+			d.OrderMetrics(ctx),
 		)
 	}
 
@@ -138,6 +158,20 @@ func (d *diContainer) ShipDecoder() kafkaConverter.ShipAssembledDecoder {
 	}
 
 	return d.shipDecoder
+}
+
+func (d *diContainer) OrderMetrics(ctx context.Context) *orderMetrics.Metrics {
+	if d.orderMetrics == nil {
+		m, err := orderMetrics.New(ctx, otel.Meter("order.service"))
+		if err != nil {
+			logger.Error(ctx, "failed to initialize order metrics", zap.Error(err))
+			panic(fmt.Sprintf("failed to initialize order metrics: %v", err))
+		}
+
+		d.orderMetrics = m
+	}
+
+	return d.orderMetrics
 }
 
 func (d *diContainer) OrderRepository(ctx context.Context) repository.OrderRepository {

@@ -41,3 +41,8 @@ type AssembledConsumerConfig interface {
 type OrderProducerConfig interface {
 	Topic() string
 }
+
+type MetricsConfig interface {
+	CollectorEndpoint() string
+	CollectorInterval() time.Duration
+}
