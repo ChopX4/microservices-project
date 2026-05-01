@@ -55,6 +55,79 @@
 
 ---
 
+## Полный жизненный цикл запроса
+
+Ниже описан основной пользовательский путь и то, как запрос проходит через систему.
+
+### 1. Регистрация и логин
+
+1. Клиент вызывает `IAM.Register` и создает пользователя.
+2. Клиент вызывает `IAM.Login` и получает `session_uuid`.
+3. Клиент сохраняет `session_uuid` и передает его в `Order` через заголовок `X-Session-Uuid`.
+
+Результат: у клиента есть действующая сессия, которую `order` и `inventory` могут валидировать через `IAM.Whoami`.
+
+### 2. Создание заказа (`POST /api/v1/orders`)
+
+1. HTTP-запрос приходит в `order`.
+2. `order` middleware читает `X-Session-Uuid`, вызывает `IAM.Whoami` и кладет пользователя в `context`.
+3. `order` вызывает `Inventory.ListParts` по gRPC, чтобы получить детали и цены.
+4. Перед gRPC вызовом `order` прокидывает `session_uuid` в metadata (`session-uuid`).
+5. `inventory` interceptor проверяет `session-uuid` через `IAM.Whoami`.
+6. `order` считает итоговую цену и сохраняет заказ в PostgreSQL со статусом `PENDING_PAYMENT`.
+7. `order` увеличивает метрику `orders_total`.
+8. Клиент получает `order_uuid` и `total_price`.
+
+Результат: заказ создан, но еще не оплачен.
+
+### 3. Оплата заказа (`POST /api/v1/orders/{order_uuid}/pay`)
+
+1. HTTP-запрос приходит в `order` и проходит ту же auth-проверку middleware.
+2. Service слой `order` читает заказ из PostgreSQL и проверяет, что статус допускает оплату.
+3. `order` вызывает `Payment.Pay` по gRPC.
+4. `payment` возвращает `transaction_uuid`.
+5. `order` открывает транзакцию в PostgreSQL.
+6. В этой транзакции `order` обновляет заказ: статус `PAID`, `transaction_uuid`, `payment_method`.
+7. В этой же транзакции `order` пишет событие `OrderPaid` в outbox-таблицу `events` со статусом `PENDING`.
+8. Транзакция коммитится.
+9. `order` увеличивает метрику `orders_revenue_total` на сумму заказа.
+10. Клиент получает `transaction_uuid`.
+
+Результат: деньги подтверждены, событие о платеже надежно сохранено в outbox.
+
+### 4. Публикация outbox и сборка корабля
+
+1. Фоновый воркер `order` (`outbox sender`) батчем читает `PENDING` события из `events`.
+2. Для каждого события воркер пытается отправить сообщение в Kafka.
+3. Если отправка успешна, событие помечается как `PUBLISHED`.
+4. Если отправка неуспешна, событие остается `PENDING` и будет ретраиться.
+5. `assembly` consumer читает `OrderPaid` из Kafka.
+6. `assembly` валидирует payload события.
+7. `assembly` имитирует сборку (задержка), формирует событие `ShipAssembled`.
+8. `assembly` публикует `ShipAssembled` в Kafka.
+9. `assembly` пишет метрику `assembly_duration_seconds`.
+
+Результат: после оплаты заказ проходит этап сборки и генерирует событие завершения сборки.
+
+### 5. Завершение заказа и нотификации
+
+1. `order` consumer читает `ShipAssembled` из Kafka.
+2. `order` переводит заказ в статус `COMPLETED`.
+3. `notification` consumer читает `OrderPaid` и отправляет уведомление об оплате в Telegram.
+4. `notification` consumer читает `ShipAssembled` и отправляет уведомление о сборке в Telegram.
+
+Результат: жизненный цикл заказа завершается статусом `COMPLETED`, пользователь получает уведомления.
+
+### 6. Чтение и отмена заказа
+
+1. `GET /api/v1/orders/{order_uuid}` возвращает заказ по UUID после auth-проверки.
+2. `POST /api/v1/orders/{order_uuid}/cancel` отменяет заказ только из допустимых статусов.
+3. Если статус уже `PAID`, `CANCELED` или `COMPLETED`, сервис возвращает `conflict`.
+
+Результат: клиент может читать и отменять только корректные по состоянию заказы.
+
+---
+
 ## Хранилища и данные
 
 ### Order (PostgreSQL)
@@ -197,4 +270,3 @@ task test-api
 - Не все сервисы упакованы как отдельные docker-compose приложения (часть запускается напрямую `go run`).
 
 ---
-
